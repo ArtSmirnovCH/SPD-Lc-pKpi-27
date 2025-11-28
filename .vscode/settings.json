@@ -1,0 +1,6 @@
+{
+    "C_Cpp.errorSquiggles": "disabled",
+    "files.associations": {
+        "reco_event_lambda_new.C": "cpp"
+    }
+}
