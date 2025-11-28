@@ -208,6 +208,6 @@ __marimo__/
 
 *.csv
 
-.vscode/
-
 proj_structure.py
+
+.vscode/
