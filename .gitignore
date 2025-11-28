@@ -211,3 +211,6 @@ __marimo__/
 proj_structure.py
 
 .vscode/
+__pycache__/
+*.py[cod]
+*.class
