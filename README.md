@@ -27,7 +27,7 @@ The project involves the complete chain of generation, detector simulation, and 
 
 ### Data Description:
 Data was created at cluster JINR (CIVC).
-Detailed Description can be found here[LINK].
+Detailed Description can be found here[LINK](https://github.com/ArtSmirnovCH/SPD-Lc-pKpi-27/blob/master/Data/DataDescription.md).
 
 
 ### Project Structure:
@@ -36,22 +36,27 @@ Detailed Description can be found here[LINK].
 │   ├── .gitignore
 │   ├── README.md
 │   └── requirements.txt
-│   ├── Analysis/
+│   ├── plots/
+│   ├── analysis_notebooks/
 │   │   ├── EDA.ipynb
 │   │   ├── PID_analysis.ipynb
 │   │   ├── fits.ipynb
 │   │   ├── main_analysis.ipynb
-│   │   ├── scripts.py
 │   │   └── temp.ipynb
-│   ├── plots/
 │   ├── Data/
 │   │   ├── DataDescription.md
+│   ├── analysis_scripts/
+│   │   ├── draw_scripts.py
+│   │   ├── estimate_scripts.py
+│   │   ├── fit_scripts.py
+│   │   └── selection_scripts.py
 │   ├── Simulation_and_Modeling/
 │   │   ├── PID_ana.cpp
 │   │   ├── analyze_Lc_pKpi_27_cluster.cpp
 │   │   ├── analyze_Lc_pKpi_27_cluster_tree_MB.cpp
 │   │   ├── reco_event_lambda_new.cpp
 │   │   └── sim_lambda_new.cpp
+
 ```
 
 ### Conclusions:
