@@ -144,7 +144,8 @@ def draw_feature_distribution(df: pd.DataFrame,
         element='step',
         fill=False,
         linewidth=2,
-        bins=bins
+        bins=bins,
+        ax=axes[1]
     )
 
     axes[1].set_title(f'{distr_name} Distribution', fontsize=14, fontweight='bold', pad=20)
@@ -159,10 +160,17 @@ def draw_feature_distribution(df: pd.DataFrame,
 
     # Thrashold Line
     if cut_point is not None and select_direction is not None:
-        y_max = hist_ax.get_ylim()[1]
-        vline_height = y_max * 0.95
-        axes[1].axvline(cut_point, color='black', linestyle='dashed', linewidth=2, ymin=0, ymax=vline_height)
-
+        # Get the current y-limits in data coordinates
+        y_min, y_max = axes[1].get_ylim()
+        
+        # Set the vline to go from bottom to near the top (95% of the way up in axes coordinates)
+        # ymax=0.95 means 95% from bottom to top in axes coordinates
+        axes[1].axvline(cut_point, color='black', linestyle='dashed', 
+                       linewidth=2, ymin=0, ymax=0.95)
+        
+        # Calculate position for arrow (in data coordinates)
+        arrow_y_pos = y_max * 0.9  # 90% of the way up in data coordinates
+        
         data = df[distr_name].dropna()
         counts, bin_edges = np.histogram(data, bins=bins)
         bin_width = bin_edges[1] - bin_edges[0]
@@ -172,8 +180,11 @@ def draw_feature_distribution(df: pd.DataFrame,
         else:
             arrow_direction = cut_point - bin_width * 3
             
-        axes[1].annotate('', xy=(cut_point, vline_height), xytext=(arrow_direction, vline_height),
-                    arrowprops=dict(arrowstyle='<-', color='black', lw=2))
+        # Draw arrow in data coordinates
+        axes[1].annotate('', 
+                        xy=(cut_point, arrow_y_pos), 
+                        xytext=(arrow_direction, arrow_y_pos),
+                        arrowprops=dict(arrowstyle='<-', color='black', lw=2))
 
     plt.tight_layout()
     

@@ -3,6 +3,12 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from typing import Tuple, Union
+import sys
+
+
+sys.path.append('../analysis_scripts')
+
+from fit_scripts import fit_distr_flat_bg
 
 
 ###########################################################################################################
