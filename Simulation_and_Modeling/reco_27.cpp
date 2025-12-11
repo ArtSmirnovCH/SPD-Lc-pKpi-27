@@ -1,4 +1,4 @@
-void reco_event_lambda_new(Int_t seed = -1)
+void reco_27(Int_t seed = -1)
 {
   	Int_t nEvents{}; 
   

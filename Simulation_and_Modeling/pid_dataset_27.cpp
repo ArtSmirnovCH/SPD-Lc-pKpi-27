@@ -14,7 +14,8 @@
 
 #include "TVector3.h"
 
-void PID_ana() 
+
+void pid_dataset_27( Int_t seed = -1 ) 
 {    
     SpdMCDataIterator* IT = 0;
     const SpdSetParSet* Pars_ = 0;
@@ -25,12 +26,13 @@ void PID_ana()
     const TClonesArray*   rcvertices = 0; 
     const TClonesArray*   particles_aeg = 0;
     const TClonesArray*   mcvertices = 0;   
-    const TClonesArray *particles_tof = 0; 
+    const TClonesArray *particles_tof = 0;
     const TClonesArray *particles_ts = 0;
 
     IT = new SpdMCDataIterator();
  
-    IT -> AddSourceFile("reco_full_34.root");    
+    TString inFile = Form("reco_full_%d.root", seed);
+    IT -> AddSourceFile(inFile);    
     
     IT -> ActivateBranch("all");
          
@@ -154,12 +156,12 @@ void PID_ana()
             
             // TOF
             
-            vector <Double_t> Likelihoods_tof;              
+            vector <Double_t> Likelihoods_tof;
             if ( particle -> GetTofParticleId() != -1 ){
                 SpdTofParticle *tofparticle = dynamic_cast<SpdTofParticle*>( particles_tof -> At( particle -> GetTofParticleId() ) );
                 if ( !tofparticle ) continue;
 
-                Likelihoods_tof = tofparticle -> GetLikelihoods();  
+                Likelihoods_tof = tofparticle -> GetLikelihoods();
             }
             else continue;
             
@@ -173,6 +175,10 @@ void PID_ana()
                 Likelihoods_ts = ftsparticle -> GetLikelihoods();
             }
             else continue;
+
+            // FARICH
+
+            ////////////////////
 
             ll_tof_pi = Likelihoods_tof[0];
             ll_tof_k = Likelihoods_tof[1];

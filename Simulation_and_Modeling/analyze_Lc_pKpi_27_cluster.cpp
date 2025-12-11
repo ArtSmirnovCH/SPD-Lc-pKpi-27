@@ -184,7 +184,7 @@ void SelectTracksForPV( TVector3 PV_pos_prefit )
 		
 		Int_t tof_pid{ static_cast<Int_t>(choice_with_thresholds(softmax_output_tof, thresholds_tof)) };
 
-		if ( !tof_pid ) continue;
+		if ( !tof_pid ) tof_pid = 211;
 
 		pdgTrk = tof_pid;
 
@@ -297,7 +297,7 @@ void SelectTracks(KFParticle PV)
 		
 		Int_t tof_pid{ static_cast<Int_t>(choice_with_thresholds(softmax_output_tof, thresholds_tof)) };
 
-		if ( !tof_pid ) continue;
+		if ( !tof_pid ) tof_pid = 211;
 
 		pdgTrk = tof_pid;
 

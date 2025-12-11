@@ -8,29 +8,29 @@ CURLOG=$SLURM_ARRAY_TASK_ID.log
 # Redirec stdout & strerr
 exec > $CURLOG 2>&1
 
-N_event=10000
+N_event=15000
 
 SEED=${SLURM_ARRAY_TASK_ID}
 Signal=1
 
 cd ${TMPDIR}
 
-cp /afs/jinr.ru/user/a/asmirnov/sim_10.cpp ./
-cp /afs/jinr.ru/user/a/asmirnov/reco_10.cpp ./
-cp /afs/jinr.ru/user/a/asmirnov/analyze_PV_10.cpp ./
+cp /afs/jinr.ru/user/a/asmirnov/sim_27.cpp ./
+cp /afs/jinr.ru/user/a/asmirnov/reco_27.cpp ./
+cp /afs/jinr.ru/user/a/asmirnov/pv_dataset_27.cpp ./
 
-singularity run -H ./:/WORKDIR /cvmfs/spd.jinr.ru/images/spdroot-dev-4.1.7.sif spdroot.py "sim_10.cpp(${N_event}, ${SEED}, ${Signal})" > /dev/null
+singularity run -H ./:/WORKDIR /cvmfs/spd.jinr.ru/images/spdroot-dev-4.1.7.4.sif spdroot.py "sim_27.cpp(${N_event}, ${SEED}, ${Signal})" > /dev/null
 rm core.*
-singularity run -H ./:/WORKDIR /cvmfs/spd.jinr.ru/images/spdroot-dev-4.1.7.sif spdroot.py "reco_10.cpp(${SEED})" > /dev/null
+singularity run -H ./:/WORKDIR /cvmfs/spd.jinr.ru/images/spdroot-dev-4.1.7.4.sif spdroot.py "reco_27.cpp(${SEED})" > /dev/null
 rm core.*
-singularity run -H ./:/WORKDIR /cvmfs/spd.jinr.ru/images/spdroot-dev-4.1.7.sif spdroot.py "analyze_PV_10.cpp(${SEED})" > /dev/null
+singularity run -H ./:/WORKDIR /cvmfs/spd.jinr.ru/images/spdroot-dev-4.1.7.4.sif spdroot.py "pv_dataset_27.cpp(${SEED})" > /dev/null
 rm core.*
 
 rm run_${SEED}.root
 rm params_${SEED}.root
 rm reco_full_${SEED}.root
 
-mv ana_PV_10.root /eos/user/a/asmirnov/reco_data_lambda_c/sig_data/
+mv ana_PV_27.root /eos/user/a/asmirnov/reco_data_lambda_c/sig_data/
 mv info_analysis_PV.txt /afs/jinr.ru/user/a/asmirnov/
 
 exit 0

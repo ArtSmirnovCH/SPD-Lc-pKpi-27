@@ -75,7 +75,7 @@ void set_decayer()
 }
 
 
-void sim_lambda_new( Int_t nEvents = 50, Int_t seed = -1, Bool_t signal = 1 )
+void sim_27( Int_t nEvents = 50, Int_t seed = -1, Bool_t signal = 1 )
 {
     // std::string seed_str = "Random:seed = " + std::to_string(seed);
     TString outFile = Form("run_%d.root", seed);
