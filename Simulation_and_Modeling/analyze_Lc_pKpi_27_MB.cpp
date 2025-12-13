@@ -391,10 +391,8 @@ void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::st
 	Double_t Pt_K{};
 	Double_t Pt_pip{};
 
-	Double_t length_Lc{};
-	Double_t dLength_Lc{};
 	Double_t lengthXY_Lc{};
-	Double_t dLengthXY_Lc{};
+	Double_t dlengthXY_Lc{};
 	Double_t ctau_Lc{};
 
 	Double_t OA_p{};
@@ -402,41 +400,51 @@ void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::st
 	Double_t OA_pip{};
 	Double_t ptOverE{};
 
-	Double_t chi2_Lc_PV{};
-	Double_t dist_Lc_PV{};
+	Double_t chi2_Lc_PV_xy{};
+	Double_t dist_Lc_PV_xy{};
+	Double_t dist_Lc_PV_xy_custom{};
 
-	Double_t chi2_p_PV{};
-	Double_t dist_p_PV{};
+	Double_t chi2_p_PV_xy{};
+	Double_t dist_p_PV_xy{};
+	Double_t dist_p_PV_xy_custom{};
 
-	Double_t Chi2_K_PV{};
-	Double_t dist_K_PV{};
+	Double_t chi2_K_PV_xy{};
+	Double_t dist_K_PV_xy{};
+	Double_t dist_K_PV_xy_custom{};
 
-	Double_t chi2_pip_PV{};
-	Double_t dist_pip_PV{};
+	Double_t chi2_pip_PV_xy{};
+	Double_t dist_pip_PV_xy{};
+	Double_t dist_pip_PV_xy_custom{};
 	
-	Double_t chi2_p_Lc{};
-	Double_t dist_p_Lc{};
+	Double_t chi2_p_Lc_xy{};
+	Double_t dist_p_Lc_xy{};
+	Double_t dist_p_Lc_xy_custom{};
 
-	Double_t chi2_K_Lc{};
-	Double_t dist_K_Lc{};
+	Double_t chi2_K_Lc_xy{};
+	Double_t dist_K_Lc_xy{};
+	Double_t dist_K_Lc_xy_custom{};
 
-	Double_t chi2_pip_Lc{};
-	Double_t dist_pip_Lc{};
+	Double_t chi2_pip_Lc_xy{};
+	Double_t dist_pip_Lc_xy{};
+	Double_t dist_pip_Lc_xy_custom{};
 	
 	Double_t chi2_Lc{};
 
-	Double_t chi2_K_pip{};
-	Double_t dist_K_pip{};
+	Double_t chi2_K_pip_xy{};
+	Double_t dist_K_pip_xy{};
+	Double_t dist_K_pip_xy_custom{};
 
-	Double_t chi2_p_K{};
-	Double_t dist_p_K{};
+	Double_t chi2_p_K_xy{};
+	Double_t dist_p_K_xy{};
+	Double_t dist_p_K_xy_custom{};
 
-	Double_t chi2_p_pip{};
-	Double_t dist_p_pip{};
+	Double_t chi2_p_pip_xy{};
+	Double_t dist_p_pip_xy{};
+	Double_t dist_p_pip_xy_custom{};
 
-	Double_t cosAngle_r_Lc_momentum_Lc{};
-	Double_t cosAngle_r_Lc_sum_momentum{};
-	Double_t cosAngle_momentum_Lc_sum_momentum{};
+	Double_t cosAngle_r_Lc_momentum_Lc_xy{};
+	Double_t cosAngle_r_Lc_sum_momentum_xy{};
+	Double_t cosAngle_momentum_Lc_sum_momentum_xy{};
 
 	Double_t xF{};
 	Double_t phi_angle{};
@@ -507,10 +515,8 @@ void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::st
 	tree -> Branch("Pt_K", &Pt_K, "K momentum/D");
 	tree -> Branch("Pt_pip", &Pt_pip, "#Lambda_c momentum/D");
 
-	tree -> Branch("length_Lc", &length_Lc, "P momentum/D");
-	tree -> Branch("dLength_Lc", &dLength_Lc, "#Pi+ momentum/D");
 	tree -> Branch("lengthXY_Lc", &lengthXY_Lc, "K momentum/D");
-	tree -> Branch("dLengthXY_Lc", &dLengthXY_Lc, "#Lambda_c momentum/D");
+	tree -> Branch("dlengthXY_Lc", &dlengthXY_Lc, "#Lambda_c momentum/D");
 	tree -> Branch("ctau_Lc", &ctau_Lc, "#Lambda_c momentum/D");
 
 	tree -> Branch("OA_p", &OA_p, "P momentum/D");
@@ -518,41 +524,51 @@ void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::st
 	tree -> Branch("OA_pip", &OA_pip, "K momentum/D");
 	tree -> Branch("ptOverE", &ptOverE, "#Lambda_c momentum/D");
 
-	tree -> Branch("chi2_Lc_PV", &chi2_Lc_PV, "chi2_Lc_PV/D");
-	tree -> Branch("dist_Lc_PV", &dist_Lc_PV, "dist_Lc_PV/D");
+	tree -> Branch("chi2_Lc_PV_xy", &chi2_Lc_PV_xy, "chi2_Lc_PV_xy/D");
+    tree -> Branch("dist_Lc_PV_xy", &dist_Lc_PV_xy, "dist_Lc_PV_xy/D");
+	tree -> Branch("dist_Lc_PV_xy_custom", &dist_Lc_PV_xy_custom, "dist_Lc_PV_xy_custom/D");
 
-	tree -> Branch("chi2_p_PV", &chi2_p_PV, "chi2_p_PV/D");
-	tree -> Branch("dist_p_PV", &dist_p_PV, "dist_p_PV/D");
+    tree -> Branch("chi2_p_PV_xy", &chi2_p_PV_xy, "chi2_p_PV_xy/D");
+    tree -> Branch("dist_p_PV_xy", &dist_p_PV_xy, "dist_p_PV_xy/D");
+	tree -> Branch("dist_p_PV_xy_custom", &dist_p_PV_xy_custom, "dist_p_PV_xy_custom/D");
 
-	tree -> Branch("Chi2_K_PV", &Chi2_K_PV, "Chi2_K_PV/D");
-	tree -> Branch("dist_K_PV", &dist_K_PV, "dist_K_PV/D");
+    tree -> Branch("Chi2_K_PV_xy", &Chi2_K_PV_xy, "Chi2_K_PV_xy/D");
+    tree -> Branch("dist_K_PV_xy", &dist_K_PV_xy, "dist_K_PV_xy/D");
+	tree -> Branch("dist_K_PV_xy_custom", &dist_K_PV_xy_custom, "dist_K_PV_xy_custom/D");
 
-	tree -> Branch("chi2_pip_PV", &chi2_pip_PV, "chi2_pip_PV/D");
-	tree -> Branch("dist_pip_PV", &dist_pip_PV, "dist_pip_PV/D");
-	
-	tree -> Branch("chi2_p_Lc", &chi2_p_Lc, "chi2_p_Lc/D");
-	tree -> Branch("dist_p_Lc", &dist_p_Lc, "dist_p_Lc/D");
+    tree -> Branch("chi2_pip_PV_xy", &chi2_pip_PV_xy, "chi2_pip_PV_xy/D");
+    tree -> Branch("dist_pip_PV_xy", &dist_pip_PV_xy, "dist_pip_PV_xy/D");
+	tree -> Branch("dist_pip_PV_xy_custom", &dist_pip_PV_xy_custom, "dist_pip_PV_xy_custom/D");
 
-	tree -> Branch("chi2_K_Lc", &chi2_K_Lc, "chi2_K_Lc/D");
-	tree -> Branch("dist_K_Lc", &dist_K_Lc, "dist_K_Lc/D");
+    tree -> Branch("chi2_p_Lc_xy", &chi2_p_Lc_xy, "chi2_p_Lc_xy/D");
+    tree -> Branch("dist_p_Lc_xy", &dist_p_Lc_xy, "dist_p_Lc_xy/D");
+	tree -> Branch("dist_p_Lc_xy_custom", &dist_p_Lc_xy_custom, "dist_p_Lc_xy_custom/D");
 
-	tree -> Branch("chi2_pip_Lc", &chi2_pip_Lc, "chi2_pip_Lc/D");
-	tree -> Branch("dist_pip_Lc", &dist_pip_Lc, "dist_pip_Lc/D");
-	
-	tree -> Branch("chi2_Lc", &chi2_Lc, "chi2_Lc/D");
+    tree -> Branch("chi2_K_Lc_xy", &chi2_K_Lc_xy, "chi2_K_Lc_xy/D");
+    tree -> Branch("dist_K_Lc_xy", &dist_K_Lc_xy, "dist_K_Lc_xy/D");
+	tree -> Branch("dist_K_Lc_xy_custom", &dist_K_Lc_xy_custom, "dist_K_Lc_xy_custom/D");
 
-	tree -> Branch("chi2_K_pip", &chi2_K_pip, "chi2_K_pip/D");
-	tree -> Branch("dist_K_pip", &dist_K_pip, "dist_K_pip/D");
+    tree -> Branch("chi2_pip_Lc_xy", &chi2_pip_Lc_xy, "chi2_pip_Lc_xy/D");
+    tree -> Branch("dist_pip_Lc_xy", &dist_pip_Lc_xy, "dist_pip_Lc_xy/D");
+	tree -> Branch("dist_pip_Lc_xy_custom", &dist_pip_Lc_xy_custom, "dist_pip_Lc_xy_custom/D");
 
-	tree -> Branch("chi2_p_K", &chi2_p_K, "chi2_p_K/D");
-	tree -> Branch("dist_p_K", &dist_p_K, "dist_p_K/D");
+    tree -> Branch("chi2_Lc", &chi2_Lc, "chi2_Lc/D");
 
-	tree -> Branch("chi2_p_pip", &chi2_p_pip, "chi2_p_pip/D");
-	tree -> Branch("dist_p_pip", &dist_p_pip, "dist_p_pip/D");
+    tree -> Branch("chi2_K_pip_xy", &chi2_K_pip_xy, "chi2_K_pip_xy/D");
+    tree -> Branch("dist_K_pip_xy", &dist_K_pip_xy, "dist_K_pip_xy/D");
+	tree -> Branch("dist_K_pip_xy_custom", &dist_K_pip_xy_custom, "dist_K_pip_xy_custom/D");
 
-	tree -> Branch("cosAngle_r_Lc_momentum_Lc", &cosAngle_r_Lc_momentum_Lc, "#Lambda_c momentum/D");
-	tree -> Branch("cosAngle_r_Lc_sum_momentum", &cosAngle_r_Lc_sum_momentum, "#Lambda_c momentum/D");
-	tree -> Branch("cosAngle_momentum_Lc_sum_momentum", &cosAngle_momentum_Lc_sum_momentum, "#Lambda_c momentum/D");
+    tree -> Branch("chi2_p_K_xy", &chi2_p_K_xy, "chi2_p_K_xy/D");
+    tree -> Branch("dist_p_K_xy", &dist_p_K_xy, "dist_p_K_xy/D");
+	tree -> Branch("dist_p_K_xy_custom", &dist_p_K_xy_custom, "dist_p_K_xy_custom/D");
+
+    tree -> Branch("chi2_p_pip_xy", &chi2_p_pip_xy, "chi2_p_pip_xy/D");
+    tree -> Branch("dist_p_pip_xy", &dist_p_pip_xy, "dist_p_pip_xy/D");
+	tree -> Branch("dist_p_pip_xy_custom", &dist_p_pip_xy_custom, "dist_p_pip_xy_custom/D");
+
+	tree -> Branch("cosAngle_r_Lc_momentum_Lc_xy", &cosAngle_r_Lc_momentum_Lc_xy, "#Lambda_c momentum_xy/D");
+	tree -> Branch("cosAngle_r_Lc_sum_momentum_xy", &cosAngle_r_Lc_sum_momentum_xy, "#Lambda_c momentum_xy/D");
+	tree -> Branch("cosAngle_momentum_Lc_sum_momentum_xy", &cosAngle_momentum_Lc_sum_momentum_xy, "#Lambda_c momentum_xy/D");
 	
 	tree -> Branch("xF", &xF, "#Lambda_c^{+} xF/D");
 	tree -> Branch("phi_angle", &phi_angle, "#Lambda_c^{+} #Phi angle/D");
@@ -820,10 +836,8 @@ void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::st
 			Pt_K = K.GetPt();
 			Pt_pip = pip.GetPt();
 
-			length_Lc = Lc.GetDecayLength();
-			dLength_Lc = Lc.GetErrDecayLength();
 			lengthXY_Lc = Lc.GetDecayLengthXY();
-			dLengthXY_Lc = Lc.GetErrDecayLengthXY();
+			dlengthXY_Lc = Lc.GetErrDecayLengthXY();
 			ctau_Lc = Lc.GetLifeTime();
 
 			phi_angle = Lc.GetPhi();
@@ -903,42 +917,65 @@ void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::st
 			}
 			if ( !check_vertexGood ) continue;
 
+			// XY-plane
+			Lc_production_position.SetZ(0.0);
+			Lc_position.SetZ(0.0);
+			PV_position.SetZ(0.0);
+
+			for (auto& v : tracksPositions_PV) {
+    			v.SetZ(0.0);
+			}
+
+			for (auto& v : tracksPositions_Lc) {
+    			v.SetZ(0.0);
+			}
+
 			Lc.TransportToProductionVertex();
-            chi2_Lc_PV = Lc.GetDeviationFromVertex(pr_vtx);
-			dist_Lc_PV = ( Lc_production_position - PV_position ).Mag();
+            chi2_Lc_PV_xy = Lc.GetDeviationFromVertexXY(pr_vtx);
+			dist_Lc_PV_xy = Lc.GetDistanceFromVertexXY(pr_vtx)
+			dist_Lc_PV_xy_custom = ( Lc_production_position - PV_position ).Mag();
 
             p.TransportToProductionVertex();
-            chi2_p_PV = p.GetDeviationFromVertex(pr_vtx);
-			dist_p_PV = (PV_position - tracksPositions_PV[i_p]).Mag();
+            chi2_p_PV_xy = p.GetDeviationFromVertexXY(pr_vtx);
+			dist_p_PV_xy = p.GetDistanceFromVertexXY(pr_vtx);
+			dist_p_PV_xy_custom = (PV_position - tracksPositions_PV[i_p]).Mag();
 
             K.TransportToProductionVertex();
-            Chi2_K_PV = K.GetDeviationFromVertex(pr_vtx);
-            dist_K_PV = (PV_position - tracksPositions_PV[i_K]).Mag();
+            chi2_K_PV_xy = K.GetDeviationFromVertexXY(pr_vtx);
+			dist_K_PV_xy = K.GetDistanceFromVertexXY(pr_vtx);
+            dist_K_PV_xy_custom = (PV_position - tracksPositions_PV[i_K]).Mag();
 
             pip.TransportToProductionVertex();
-            chi2_pip_PV = pip.GetDeviationFromVertex(pr_vtx);
-			dist_pip_PV = (PV_position - tracksPositions_PV[i_pip]).Mag();
+            chi2_pip_PV_xy = pip.GetDeviationFromVertexXY(pr_vtx);
+			dist_pip_PV_xy = pip.GetDistanceFromVertexXY(pr_vtx);
+			dist_pip_PV_xy_custom = (PV_position - tracksPositions_PV[i_pip]).Mag();
 			
             Lc.TransportToDecayVertex();
-            chi2_p_Lc = p.GetDeviationFromVertex(Lc);
-			dist_p_Lc = (Lc_position - tracksPositions_Lc[i_p]).Mag();
+            chi2_p_Lc_xy = p.GetDeviationFromVertexXY(Lc);
+			dist_p_Lc_xy = p.GetDistanceFromVertexXY(Lc);
+			dist_p_Lc_xy_custom = (Lc_position - tracksPositions_Lc[i_p]).Mag();
 
-            chi2_K_Lc = K.GetDeviationFromVertex(Lc); 
-			dist_K_Lc = (Lc_position - tracksPositions_Lc[i_K]).Mag();
+            chi2_K_Lc_xy = K.GetDeviationFromVertexXY(Lc); 
+			dist_K_Lc_xy = K.GetDistanceFromVertexXY(Lc);
+			dist_K_Lc_xy_custom = (Lc_position - tracksPositions_Lc[i_K]).Mag();
 
-            chi2_pip_Lc = pip.GetDeviationFromVertex(Lc); 
-			dist_pip_Lc = (Lc_position - tracksPositions_Lc[i_pip]).Mag();
-			
+            chi2_pip_Lc_xy = pip.GetDeviationFromVertexXY(Lc); 
+			dist_pip_Lc_xy = pip.GetDistanceFromVertexXY(Lc);
+			dist_pip_Lc_xy_custom =  = (Lc_position - tracksPositions_Lc[i_pip]).Mag();
+
             chi2_Lc = Lc.GetChi2();
 
-            chi2_K_pip = K.GetDeviationFromParticle(pip);
-            dist_K_pip = ( tracksPositions_Lc[i_K] - tracksPositions_Lc[i_pip] ).Mag();
+            chi2_K_pip_xy = K.GetDeviationFromParticleXY(pip);
+			dist_K_pip_xy = K.GetDistanceFromParticleXY(pip);
+            dist_K_pip_xy_custom = ( tracksPositions_Lc[i_K] - tracksPositions_Lc[i_pip] ).Mag();
 
-			chi2_p_K = p.GetDeviationFromParticle(K);
-            dist_p_K = ( tracksPositions_Lc[i_p] - tracksPositions_Lc[i_K] ).Mag();
+			chi2_p_K_xy = p.GetDeviationFromParticleXY(K);
+			dist_p_K_xy = p.GetDistanceFromParticleXY(K);
+            dist_p_K_xy_custom = ( tracksPositions_Lc[i_p] - tracksPositions_Lc[i_K] ).Mag();
 
-			chi2_p_pip = p.GetDeviationFromParticle(pip);
-            dist_p_pip = ( tracksPositions_Lc[i_p] - tracksPositions_Lc[i_pip] ).Mag();
+			chi2_p_pip_xy = p.GetDeviationFromParticleXY(pip);
+			dist_p_pip_xy = p.GetDistanceFromParticleXY(pip);
+            dist_p_pip_xy_custom = ( tracksPositions_Lc[i_p] - tracksPositions_Lc[i_pip] ).Mag();
 		
 			//==================================================================================
 			// Momentum direction check (XY - plate])
@@ -1028,12 +1065,12 @@ void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::st
 
 	file -> Write();
 	file -> Close();
-}				
+}
 
 //======================================================================================================================
 // Launcher function
 //======================================================================================================================
-void analyze_Lc_pKpi_27_cluster_tree_MB( std::string_view inputFile, std::string outputFile ) 
+void analyze_Lc_pKpi_27_MB( std::string_view inputFile, std::string outputFile ) 
 {   
 	SpdMCDataIterator* IT = 0;
 	Int_t nMax{ 100000 };
