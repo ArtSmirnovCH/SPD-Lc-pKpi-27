@@ -184,7 +184,7 @@ void SelectTracksForPV( TVector3 PV_pos_prefit )
 		
 		Int_t tof_pid{ static_cast<Int_t>(choice_with_thresholds(softmax_output_tof, thresholds_tof)) };
 
-		if ( !tof_pid ) tof_pid = 211;
+		if ( !tof_pid ) continue;
 
 		pdgTrk = tof_pid;
 
@@ -233,9 +233,9 @@ void SelectTracksForPV( TVector3 PV_pos_prefit )
 //======================================================================================================================
 // Main analysis
 //======================================================================================================================
-void analyse(SpdMCDataIterator* IT, Int_t N, Int_t seed) // N - max event number to analyse
+void analyse(Int_t N, Int_t seed) // N - max event number to analyse
 {
-    IT = new SpdMCDataIterator();
+    SpdMCDataIterator* IT = new SpdMCDataIterator();
 
     TString inFile = Form("reco_full_%d.root", seed);
     IT -> AddSourceFile(inFile);
@@ -260,9 +260,16 @@ void analyse(SpdMCDataIterator* IT, Int_t N, Int_t seed) // N - max event number
     Double_t PV_diff_y{};
     Double_t PV_diff_z{};
 
-    Double_t PV_diff_ES_x{};
-    Double_t PV_diff_ES_y{};
-    Double_t PV_diff_ES_z{};
+    Double_t max_chi2_cut;            // Current chi2 cut value being tested
+    Int_t num_removed_tracks;         // Number of tracks removed for this cut
+    Int_t tracks_per_vertex;          // Number of tracks used in final vertex fit
+    Double_t chi2_PV;                 // Chi2 of the primary vertex fit
+    Double_t ndf_PV;                  // Number of degrees of freedom for PV
+    Double_t chi2_per_ndf_PV;         // Chi2/NDF of PV fit
+    Double_t PV_diff_ES_x;            // Difference in x: reco - true PV
+    Double_t PV_diff_ES_y;            // Difference in y: reco - true PV
+    Double_t PV_diff_ES_z;            // Difference in z: reco - true PV
+    Double_t max_chi2_observed;       // Maximum chi2 value observed in final iteration
 
     Int_t NHits_pi{};
     Int_t NHitsIts_pi{};
@@ -300,12 +307,7 @@ void analyse(SpdMCDataIterator* IT, Int_t N, Int_t seed) // N - max event number
     Int_t NHitsTsEC_K_true{};
     Int_t Chi2OverNDF_K_true{};
 
-    Double_t chi2_PV{};
-    Int_t num_removed_tracks{};
-    Int_t tracks_per_vertex{};
-    Int_t PV_accept{};
-    Double_t max_chi2{};
-    Double_t max_chi2_cut{};
+    Double_t max_chi2{};                // Temporary variable for max chi2 in loop
 
     Int_t PV_count{};
     Int_t PV_extra_sel_count{};
@@ -313,7 +315,7 @@ void analyse(SpdMCDataIterator* IT, Int_t N, Int_t seed) // N - max event number
 	//======================================================================================================================
 	// Output File
 	TFile* file;
-    file = new TFile("ana_PV_10.root", "RECREATE");
+    file = new TFile("ana_PV_27.root", "RECREATE");
 	//======================================================================================================================
 	// TTree
 	TTree *tree = new TTree("tree", "tree");
@@ -324,17 +326,18 @@ void analyse(SpdMCDataIterator* IT, Int_t N, Int_t seed) // N - max event number
     tree -> Branch("PV_diff_y", &PV_diff_y, "PV_diff_y/D");
     tree -> Branch("PV_diff_z", &PV_diff_z, "PV_diff_z/D");
 
-    tree -> Branch("PV_diff_ES_x", &PV_diff_ES_x, "PV_diff_ES_x/D");
-    tree -> Branch("PV_diff_ES_y", &PV_diff_ES_y, "PV_diff_ES_y/D");
-    tree -> Branch("PV_diff_ES_z", &PV_diff_ES_z, "PV_diff_ES_z/D");
+    tree->Branch("max_chi2_cut", &max_chi2_cut, "max_chi2_cut/D");
+    tree->Branch("num_removed_tracks", &num_removed_tracks, "num_removed_tracks/I");
+    tree->Branch("tracks_per_vertex", &tracks_per_vertex, "tracks_per_vertex/I");
+    tree->Branch("chi2_PV", &chi2_PV, "chi2_PV/D");
+    tree->Branch("ndf_PV", &ndf_PV, "ndf_PV/D");
+    tree->Branch("chi2_per_ndf_PV", &chi2_per_ndf_PV, "chi2_per_ndf_PV/D");
+    tree->Branch("PV_diff_ES_x", &PV_diff_ES_x, "PV_diff_ES_x/D");
+    tree->Branch("PV_diff_ES_y", &PV_diff_ES_y, "PV_diff_ES_y/D");
+    tree->Branch("PV_diff_ES_z", &PV_diff_ES_z, "PV_diff_ES_z/D");
+    tree->Branch("max_chi2_observed", &max_chi2_observed, "max_chi2_observed/D");
 
-    tree -> Branch("chi2_PV", &chi2_PV, "chi2_PV/D");
-    tree -> Branch("num_removed_tracks", &num_removed_tracks, "num_removed_tracks/I");
-    tree -> Branch("tracks_per_vertex", &tracks_per_vertex, "tracks_per_vertex/I");
-    tree -> Branch("max_chi2", &max_chi2, "max_chi2/D");
-    tree -> Branch("max_chi2_cut", &max_chi2_cut, "max_chi2_cut/D");
-
-	//======================================================================================================================
+    //======================================================================================================================
     while ( IT -> NextEvent() && n_event < events_max )
 	{
 		++n_event;
@@ -358,7 +361,7 @@ void analyse(SpdMCDataIterator* IT, Int_t N, Int_t seed) // N - max event number
         SelectTracksForPV( PV_pos_prefit );                                                     // Tracks selection for PV reconstruction via KFP
 
 		if ( !findPVCheck )     continue;                                                       // Skip if no PV.
-		if ( KFParticles_PV.size() < 5 ) continue;						// Check if have more than 4 tracks fo PV reconstruction.
+		if ( KFParticles_PV.size() < 4 ) continue;						// Check if have more than 4 tracks fo PV reconstruction.
 		//=========================================================================================================================
 		// Set field in PV position 
 		SpdTrackPropagatorGF fPropagator;
@@ -386,69 +389,237 @@ void analyse(SpdMCDataIterator* IT, Int_t N, Int_t seed) // N - max event number
 		PV_diff_y = primVtx.GetY() - truePVPosition.Y();
 		PV_diff_z = primVtx.GetZ() - truePVPosition.Z();
 
+        //=========================================================================================================================
+		// Re-reconstructing primary vertex with KFParticle (MAIN ANALYSIS) VAR-1
+        //=========================================================================================================================
+
+        // THE CODE FOR MAIN ANALYSIS
+
+        // // Use only ONE optimal cut value (e.g., 5.0 based on your optimization)
+        // Double_t optimal_cut = 5.0;  // Change this to your chosen value
+        // max_chi2_cut = optimal_cut;
+ 
+        // num_removed_tracks = 0;
+        // Bool_t continue_removal = true;
+ 
+        // while (continue_removal && KFParticles_PV.size() > 2) {
+        //     Int_t worst_track_idx = -1;
+        //     Double_t max_chi2 = 0.0;
+        //     
+        //     // Find track with maximum chi2 to current vertex
+        //     for (Int_t i = 0; i < KFParticles_PV.size(); ++i) {
+        //         const Double_t chi2 = KFParticles_PV[i].GetDeviationFromVertex(primVtx);
+        //         if (chi2 > max_chi2) {
+        //             worst_track_idx = i;
+        //             max_chi2 = chi2;
+        //         }
+        //     }
+        //     
+        //     // Check if we should remove this track
+        //     if (worst_track_idx >= 0 && max_chi2 > optimal_cut) {
+        //         // Remove the worst track
+        //         KFParticles_PV.erase(KFParticles_PV.begin() + worst_track_idx);
+        //         
+        //         // Recalculate vertex from remaining tracks
+        //         primVtx = KFParticle(); // Reset vertex
+        //         for (const auto& particle : KFParticles_PV) {
+        //             primVtx += particle; // Add all remaining tracks to rebuild vertex
+        //         }
+        //         
+        //         ++num_removed_tracks;
+        //     } else {
+        //         continue_removal = false;
+        //     }
+        // }
+
+        // Now primVtx contains the updated vertex after removing bad tracks
+        // KFParticles_PV contains only the tracks that passed the chi2 cut
+
+        //=========================================================================================================================
+		// Re-reconstructing primary vertex with KFParticle (MAIN ANALYSIS) VAR-2
+        //=========================================================================================================================
+
+        // THE CODE FOR MAIN ANALYSIS
+
+        // Double_t optimal_cut = 5.0;  // Change this to your chosen value
+        // max_chi2_cut = optimal_cut;
+ 
+        // num_removed_tracks = 0;
+        // Bool_t continue_removal = true;
+ 
+        // while (continue_removal && KFParticles_PV.size() > 2) {
+        //     Int_t worst_track_idx = -1;
+        //     Double_t max_chi2 = 0.0;
+        //     
+        //     // Find track with maximum chi2 to current vertex
+        //     for (Int_t i = 0; i < KFParticles_PV.size(); ++i) {
+        //         const Double_t chi2 = KFParticles_PV[i].GetDeviationFromVertex(primVtx);
+        //         if (chi2 > max_chi2) {
+        //             worst_track_idx = i;
+        //             max_chi2 = chi2;
+        //         }
+        //     }
+        //     
+        //     // Check if we should remove this track
+        //     if (worst_track_idx >= 0 && max_chi2 > optimal_cut) {
+        //         // Remove track contribution from vertex using SubtractFromVertex
+        //         KFParticles_PV[worst_track_idx].SubtractFromVertex(primVtx);
+        //         
+        //         // Remove the track from the collection
+        //         KFParticles_PV.erase(KFParticles_PV.begin() + worst_track_idx);
+        //         
+        //         ++num_removed_tracks;
+        //     } else {
+        //         continue_removal = false;
+        //     }
+        // }
+
+        // Now primVtx contains the updated vertex after removing bad tracks
+        // KFParticles_PV contains only the tracks that passed the chi2 cut
+
 		//=========================================================================================================================
-		// Re-reconstructing primary vertex with KFParticle
+		// Re-reconstructing primary vertex with KFParticle (CUT ANALYSIS) VAR-1
+        //=========================================================================================================================
+        // UNCOMMENT THIS PART FOR CUT ANALYSIS
 
-        max_chi2 = 0.0;
-        for (Int_t i = 0; i < KFParticles_PV.size(); ++i) {
-            const Double_t chi2 = KFParticles_PV[i].GetDeviationFromVertex(primVtx);
-            if (chi2 > max_chi2) {
-                max_chi2 = chi2;
-            }
-        }
+        // // Save the original state
+        // std::vector<KFParticle> original_KFParticles_PV = KFParticles_PV;
+        // KFParticle original_primVtx = primVtx;
+        //  
+        // // Create vector of indices for efficient tracking
+        // std::vector<Int_t> track_indices(original_KFParticles_PV.size());
+        // for (Int_t i = 0; i < original_KFParticles_PV.size(); ++i) {
+        //     track_indices[i] = i;
+        // }
+ 
+        // std::vector<Double_t> max_chi2_cut_vector = {30., 12., 11., 10., 9., 8., 7., 6., 5., 4., 3., 2.};
+ 
+        // for (Double_t current_cut : max_chi2_cut_vector) {
+        //     // Start with all tracks
+        //     std::vector<Int_t> current_indices = track_indices;
+        //     primVtx = original_primVtx; // Start with original vertex
+ 
+        //     max_chi2_cut = current_cut;
+        //     num_removed_tracks = 0;
+        //     Bool_t continue_removal = true;
+ 
+        //     while (continue_removal && current_indices.size() > 2) {
+        //         Int_t worst_idx_pos = -1; // Position in current_indices
+        //         Int_t worst_original_idx = -1; // Original track index
+        //         max_chi2 = 0.0;
+ 
+        //         // Find worst track
+        //         for (Int_t i = 0; i < current_indices.size(); ++i) {
+        //             Int_t track_idx = current_indices[i];
+        //             const Double_t chi2 = original_KFParticles_PV[track_idx].GetDeviationFromVertex(primVtx);
+        //             if (chi2 > max_chi2) {
+        //                 worst_idx_pos = i;
+        //                 worst_original_idx = track_idx;
+        //                 max_chi2 = chi2;
+        //             }
+        //         }
+ 
+        //         // Check cut
+        //         if (worst_idx_pos >= 0 && max_chi2 > current_cut) {
+        //             // Remove track index
+        //             current_indices.erase(current_indices.begin() + worst_idx_pos);
+        //     
+        //             // Rebuild vertex
+        //             primVtx = KFParticle(); // Reset
+        //             for (Int_t idx : current_indices) {
+        //                 primVtx += original_KFParticles_PV[idx];
+        //             }
+ 
+        //             ++num_removed_tracks;
+        //         } else {
+        //             continue_removal = false;
+        //         }
+        //     }
+ 
+        //     // Store results
+        //     PV_diff_ES_x = primVtx.GetX() - truePVPosition.X();
+        //     PV_diff_ES_y = primVtx.GetY() - truePVPosition.Y();
+        //     PV_diff_ES_z = primVtx.GetZ() - truePVPosition.Z();
+        //     
+        //     chi2_PV = primVtx.GetChi2();
+        //     ndf_PV = primVtx.GetNDF();
+        //     chi2_per_ndf_PV = (ndf_PV > 0) ? chi2_PV / ndf_PV : -1.0;
+        //     tracks_per_vertex = current_indices.size();
+        //     max_chi2_observed = max_chi2;
+        //     
+        //     tree->Fill();
+        // }
+ 
+        // Restore for any code after the loop
+        // KFParticles_PV = original_KFParticles_PV;
+        // primVtx = original_primVtx;
 
-        // Save the original state before the loop
+        //=========================================================================================================================
+		// Re-reconstructing primary vertex with KFParticle (CUT ANALYSIS) VAR-2
+        //=========================================================================================================================
+
+        // // Save the original state
         std::vector<KFParticle> original_KFParticles_PV = KFParticles_PV;
         KFParticle original_primVtx = primVtx;
 
-        std::vector<Double_t> max_chi2_cut_vector = {9., 10.};
+        std::vector<Double_t> max_chi2_cut_vector = {30., 12., 11., 10., 9., 8., 7., 6., 5., 4., 3., 2.};
+
         for (Double_t current_cut : max_chi2_cut_vector) {
-            // Restore original state for each iteration
+            // Restore original state for this iteration
             KFParticles_PV = original_KFParticles_PV;
             primVtx = original_primVtx;
-            max_chi2_cut = current_cut;  // Store which cut we're using
-            
+
+            max_chi2_cut = current_cut;
             num_removed_tracks = 0;
-            Bool_t flag = true;
-            Int_t limitRemovedTracks = static_cast<Int_t>(original_KFParticles_PV.size()) - 1;
-            
-            while (flag) {
-                Int_t badTrk = -1;
-                Double_t maxChi2 = 0.0;
-                
-                // Find track with maximum chi2
+            Bool_t continue_removal = true;
+            Int_t min_tracks_for_vertex = 2; // Need at least 2 tracks
+
+            while (continue_removal && KFParticles_PV.size() > min_tracks_for_vertex) {
+                Int_t worst_track_idx = -1;
+                max_chi2 = 0.0;
+
+                // Find track with maximum chi2 to current vertex
                 for (Int_t i = 0; i < KFParticles_PV.size(); ++i) {
                     const Double_t chi2 = KFParticles_PV[i].GetDeviationFromVertex(primVtx);
-                    if (chi2 > maxChi2) {
-                        badTrk = i;
-                        maxChi2 = chi2;
+                    if (chi2 > max_chi2) {
+                        worst_track_idx = i;
+                        max_chi2 = chi2;
                     }
                 }
-                
+
                 // Check if we should remove this track
-                if (maxChi2 > current_cut && num_removed_tracks < limitRemovedTracks && badTrk >= 0) {
-                    KFParticles_PV[badTrk].SubtractFromVertex(primVtx);
-                    KFParticles_PV.erase(KFParticles_PV.begin() + badTrk);
+                if (worst_track_idx >= 0 && max_chi2 > current_cut) {
+                    // Remove track contribution using SubtractFromVertex
+                    KFParticles_PV[worst_track_idx].SubtractFromVertex(primVtx);
+                    
+                    // Remove track from collection
+                    KFParticles_PV.erase(KFParticles_PV.begin() + worst_track_idx);
+                    
                     ++num_removed_tracks;
                 } else {
-                    flag = false;
+                    continue_removal = false;
                 }
             }
-            
-            // Calculate differences with final vertex
+
+            // Store results
             PV_diff_ES_x = primVtx.GetX() - truePVPosition.X();
             PV_diff_ES_y = primVtx.GetY() - truePVPosition.Y();
             PV_diff_ES_z = primVtx.GetZ() - truePVPosition.Z();
             
             chi2_PV = primVtx.GetChi2();
+            ndf_PV = primVtx.GetNDF();
+            chi2_per_ndf_PV = (ndf_PV > 0) ? chi2_PV / ndf_PV : -1.0;
             tracks_per_vertex = KFParticles_PV.size();
-            
+            max_chi2_observed = max_chi2;
+ 
             tree->Fill();
         }
 
         // Restore for any code after the loop
-        KFParticles_PV = original_KFParticles_PV;
-        primVtx = original_primVtx;
+        // KFParticles_PV = original_KFParticles_PV;
+        // primVtx = original_primVtx;
+
+        //=========================================================================================================================
 
         const KFParticle pr_vtx = primVtx;
         ++PV_extra_sel_count;
@@ -472,6 +643,6 @@ void analyse(SpdMCDataIterator* IT, Int_t N, Int_t seed) // N - max event number
 //======================================================================================================================
 void pv_dataset_27(Int_t SEED = 0 ) 
 {   
-	SpdMCDataIterator* IT = 0;
-	analyse(IT, 20000, SEED); 
+	// SpdMCDataIterator* IT = 0;
+	analyse(20000, SEED); 
 }

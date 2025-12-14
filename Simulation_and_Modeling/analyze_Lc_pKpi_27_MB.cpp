@@ -184,7 +184,7 @@ void SelectTracksForPV( TVector3 PV_pos_prefit )
 		
 		Int_t tof_pid{ static_cast<Int_t>(choice_with_thresholds(softmax_output_tof, thresholds_tof)) };
 
-		if ( !tof_pid ) tof_pid = 211;
+		if ( !tof_pid ) continue;
 
 		pdgTrk = tof_pid;
 
@@ -297,7 +297,7 @@ void SelectTracks(KFParticle PV)
 		
 		Int_t tof_pid{ static_cast<Int_t>(choice_with_thresholds(softmax_output_tof, thresholds_tof)) };
 
-		if ( !tof_pid ) tof_pid = 211;
+		if ( !tof_pid ) continue;
 
 		pdgTrk = tof_pid;
 
@@ -352,7 +352,7 @@ void CheckTracks( SpdMCParticle* (&particles)[3], Int_t (&pdgs)[3] )
 //======================================================================================================================
 void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::string outputFile) // N - max event number to analyse
 {
-	IT = new SpdMCDataIterator();
+	SpdMCDataIterator* IT = new SpdMCDataIterator();
 
 	IT -> AddSourceFile( inputFile );
 
@@ -640,11 +640,10 @@ void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::st
 		if ( !prim_vtx || !prim_vtx -> IsPrimary() ) continue;
 		SpdPrimVertexFitPar* prim_vtx_fit = dynamic_cast <SpdPrimVertexFitPar*> (prim_vtx -> GetFitPars()); // PV RC first approximation.
 		if (!prim_vtx_fit) continue;
-		TVector3 PV_pos{};                                                                      // PV position after fit.
-		PV_pos_prefit = prim_vtx_fit -> GetVertex();                                            // PV RC position first approximation.  
-		SelectTracksForPV( PV_pos_prefit );                                                     // Tracks selection for PV reconstruction via KFP
-		if ( !findPVCheck )     continue;                                                       // Skip if no PV.
-		if ( KFParticles_PV.size() < 5 ) continue;						// Check if have more than 4 tracks fo PV reconstruction.
+		PV_pos_prefit = prim_vtx_fit -> GetVertex();        // PV RC position first approximation.  
+		SelectTracksForPV( PV_pos_prefit );                 // Tracks selection for PV reconstruction
+		if ( !findPVCheck )     continue;                   // Skip if no PV.
+		if ( KFParticles_PV.size() < 5 ) continue;			// Check if have more than 5 tracks fo PV reconstruction.
 		//=========================================================================================================================
 		// Set field in PV position 
 		SpdTrackPropagatorGF fPropagator;
@@ -668,36 +667,48 @@ void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::st
 		PV_diff_y = primVtx.GetY() - truePVPosition.Y();
 		PV_diff_z = primVtx.GetZ() - truePVPosition.Z();
 		//=========================================================================================================================
-		// Re-reconstructing primary vertex with KFParticle
-		Double_t chi2OverNDFBeforeRemoving{};
-		Double_t chi2OverNDFAfterRemoving{};
-		Bool_t flag{1};
-		Int_t numberRemovedTracks{};
-		Int_t limitRemovedTracks{ static_cast<Int_t>( KFParticles_PV.size() ) - 1 }; // Saving from removing all the tracks from KFPVertex which leads to ERROR
-		while( flag )
-		{
-			Int_t badTrk{0};
-			Double_t maxChi2{0};
-			for ( Int_t i{}; i < KFParticles_PV.size(); ++i )
-			{
-				const Double_t chi2 = KFParticles_PV[i].GetDeviationFromVertex(primVtx);
-				if ( chi2 > maxChi2 )
-				{
-					badTrk = i;
-					maxChi2 = chi2;
-				}
-			}
+		// Re-reconstructing primary vertex with KFParticle (MAIN ANALYSIS) VAR-1
+        //=========================================================================================================================
 
-			KFParticle tempVert{ primVtx };
+        Double_t optimal_cut = 5.0;
+        max_chi2_cut = optimal_cut;
+ 
+        Bool_t continue_removal = true;
+ 
+        while (continue_removal && KFParticles_PV.size() > 2) {
+            Int_t worst_track_idx = -1;
+            Double_t max_chi2 = 0.0;
+            
+            // Find track with maximum chi2 to current vertex
+            for (Int_t i = 0; i < KFParticles_PV.size(); ++i) {
+                const Double_t chi2 = KFParticles_PV[i].GetDeviationFromVertex(primVtx);
+                if (chi2 > max_chi2) {
+                    worst_track_idx = i;
+                    max_chi2 = chi2;
+                }
+            }
+            
+            // Check if we should remove this track
+            if (worst_track_idx >= 0 && max_chi2 > optimal_cut) {
+                // Remove the worst track
+                KFParticles_PV.erase(KFParticles_PV.begin() + worst_track_idx);
+                
+                // Recalculate vertex from remaining tracks
+                primVtx = KFParticle(); // Reset vertex
+                for (const auto& particle : KFParticles_PV) {
+                    primVtx += particle; // Add all remaining tracks to rebuild vertex
+                }
+                
+            } else {
+                continue_removal = false;
+            }
+        }
 
-			if ( maxChi2 > 9. && numberRemovedTracks < limitRemovedTracks)
-			{
-				KFParticles_PV[badTrk].SubtractFromVertex(primVtx);
-				KFParticles_PV.erase(KFParticles_PV.begin() + badTrk);
-				++numberRemovedTracks;
-			}
-			else flag = 0;
-		}
+        // Now primVtx contains the updated vertex after removing bad tracks
+        // KFParticles_PV contains only the tracks that passed the chi2 cut
+
+		if (KFParticles_PV.size() < 5) continue;
+
 		PV_diff_ES_x = primVtx.GetX() - truePVPosition.X();
 		PV_diff_ES_y = primVtx.GetY() - truePVPosition.Y();
 		PV_diff_ES_z = primVtx.GetZ() - truePVPosition.Z();
@@ -1072,7 +1083,7 @@ void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::st
 //======================================================================================================================
 void analyze_Lc_pKpi_27_MB( std::string_view inputFile, std::string outputFile ) 
 {   
-	SpdMCDataIterator* IT = 0;
+	// SpdMCDataIterator* IT = 0;
 	Int_t nMax{ 100000 };
-	analyse(IT, nMax, inputFile, outputFile); 
+	analyse(nMax, inputFile, outputFile); 
 }

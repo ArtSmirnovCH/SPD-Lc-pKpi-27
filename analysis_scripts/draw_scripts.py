@@ -477,3 +477,35 @@ def bar_plot(
     ax.grid(True, alpha=0.8, linestyle='--')
 
     plt.show()
+    
+    
+###########################################################################################################
+# hist_plot
+###########################################################################################################
+def hist_plot(
+    data: pd.DataFrame,
+    distr_name: str,
+    ax,
+    bins=40
+) -> None:
+
+    sns.histplot(
+        data=data,
+        x=distr_name,
+        color='#2E86AB',
+        alpha=1,
+        element='step',
+        fill=False,
+        linewidth=2,
+        bins=bins,
+        ax=ax
+    )
+
+    ax.set_title(f'{distr_name} Distribution', fontsize=14, fontweight='bold', pad=20)
+    ax.set_xlabel(f'{distr_name}', fontweight='bold')
+    ax.set_ylabel('Counts', fontweight='bold')
+
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    ax.grid(True, alpha=0.8, linestyle='--')

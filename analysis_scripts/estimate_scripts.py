@@ -480,18 +480,23 @@ def choice(
                       (df[cols_name[2]] > mask_thresh[1]) | 
                       (df[cols_name[3]] > mask_thresh[2]))
 
-        df = df[thresh_mask].reset_index(drop=True)
-
+        # Unclassified track are set to 211
+        # df.iloc[~thresh_mask, 1] = 1
+        # df.iloc[~thresh_mask, 2] = 0
+        # df.iloc[~thresh_mask, 3] = 0
+        df = df[thresh_mask].reset_index(drop=True)     # comment this and uncomment 3 lines above for 
+                                                        # Unclassified track are set to 211
+        
         # Subtract thresholds from probabilities (normalization step)
         df.iloc[:, 1] -= mask_thresh[0]
         df.iloc[:, 2] -= mask_thresh[1]
         df.iloc[:, 3] -= mask_thresh[2]
 
     df.columns = ['mc_pid', 211, 321, 2212]  # 211: pion, 321: kaon, 2212: proton
-
+    
     # Select particle type with highest probability for each row
     res_series = df[[211, 321, 2212]].idxmax(axis=1).rename('pred_pid')
-
+    
     # Combine original MC truth with predictions
     res_df = pd.concat([df.mc_pid, res_series], axis=1)
 
@@ -527,7 +532,7 @@ def check_thresholds(
     
     track_part = []  # Track selection efficiency
     pi_as_pi = []    # pi classification accuracy
-    k_as_k = []      # kaon classification accuracy  
+    k_as_k = []      # kaon classification accuracy
     p_as_p = []      # proton classification accuracy
     
     for thresh in thresholds:

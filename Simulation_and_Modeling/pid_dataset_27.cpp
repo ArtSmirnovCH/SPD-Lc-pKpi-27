@@ -17,19 +17,18 @@
 
 void pid_dataset_27( Int_t seed = -1 ) 
 {    
-    SpdMCDataIterator* IT = 0;
     const SpdSetParSet* Pars_ = 0;
 
-    const TClonesArray*   mcparticles     = 0;     
-    const TClonesArray*   mctracks        = 0;     
-    const TClonesArray*   rcecalpartilces = 0;    
-    const TClonesArray*   rcvertices = 0; 
-    const TClonesArray*   particles_aeg = 0;
-    const TClonesArray*   mcvertices = 0;   
-    const TClonesArray *particles_tof = 0;
-    const TClonesArray *particles_ts = 0;
+    const TClonesArray*   mcparticles       = 0;
+    const TClonesArray*   mctracks          = 0;
+    const TClonesArray*   rcecalpartilces   = 0;
+    const TClonesArray*   rcvertices        = 0;
+    const TClonesArray*   particles_aeg     = 0;
+    const TClonesArray*   mcvertices        = 0;
+    const TClonesArray*   particles_tof     = 0;
+    const TClonesArray*   particles_ts      = 0;
 
-    IT = new SpdMCDataIterator();
+    SpdMCDataIterator* IT = new SpdMCDataIterator();
  
     TString inFile = Form("reco_full_%d.root", seed);
     IT -> AddSourceFile(inFile);    
