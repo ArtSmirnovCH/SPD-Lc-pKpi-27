@@ -17,12 +17,12 @@ SEED=${SLURM_ARRAY_TASK_ID}
 
 cd ${TMPDIR}
 
-cp /afs/jinr.ru/user/a/asmirnov/sim_lambda_new.cpp ./
-cp /afs/jinr.ru/user/a/asmirnov/reco_event_lambda_new.C ./
+cp /afs/jinr.ru/user/a/asmirnov/sim_27.cpp ./
+cp /afs/jinr.ru/user/a/asmirnov/reco_27.cpp ./
 
-singularity run -H ./:/WORKDIR /cvmfs/spd.jinr.ru/images/spdroot-dev-4.1.7.4.sif spdroot.py "sim_lambda_new.cpp(${N_event}, ${SEED}, ${Signal})" > /dev/null
+singularity run -H ./:/WORKDIR /cvmfs/spd.jinr.ru/images/spdroot-dev-4.1.7.4.sif spdroot.py "sim_27.cpp(${N_event}, ${SEED}, ${Signal})" > /dev/null
 rm core.*
-singularity run -H ./:/WORKDIR /cvmfs/spd.jinr.ru/images/spdroot-dev-4.1.7.4.sif spdroot.py "reco_event_lambda_new.C(${SEED})" > /dev/null
+singularity run -H ./:/WORKDIR /cvmfs/spd.jinr.ru/images/spdroot-dev-4.1.7.4.sif spdroot.py "reco_27.cpp(${SEED})" > /dev/null
 rm core.*
 rm run_${SEED}.root
 rm params_${SEED}.root

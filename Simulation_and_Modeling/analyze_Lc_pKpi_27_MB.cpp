@@ -58,13 +58,13 @@ int choice_with_thresholds(const std::vector<double>& probabilities,
         if (std::isnan(probabilities[i]) || std::isinf(probabilities[i])) {
             return 0;
         }
-        // Check for negative probabilities (if not allowed)
+        // Check for negative probabilities
         if (probabilities[i] < 0.0) {
             return 0;
         }
     }
 
-    // Apply threshold mask - check if any probability passes its threshold
+    // Apply threshold mask
     bool passes_threshold = false;
     for (size_t i = 0; i < probabilities.size(); ++i) {
         if (probabilities[i] > actual_thresholds[i]) {
@@ -350,7 +350,7 @@ void CheckTracks( SpdMCParticle* (&particles)[3], Int_t (&pdgs)[3] )
 //======================================================================================================================
 // Main analysis
 //======================================================================================================================
-void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::string outputFile) // N - max event number to analyse
+void sv_reconstruction(Int_t N, std::string_view inputFile, std::string outputFile) // N - max event number to analyse
 {
 	SpdMCDataIterator* IT = new SpdMCDataIterator();
 
@@ -480,6 +480,9 @@ void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::st
 	Double_t Lc_diff_y{};
 	Double_t Lc_diff_z{};
 
+	Int_t kf_pv_size_before_re_fit{};	// Amount of tracks for PV reco before re-fit loop
+	Int_t kf_pv_size_after_re_fit{};	// Amount of tracks for PV reco after re-fit loop
+
 	Double_t PV_diff_x{};
 	Double_t PV_diff_y{};
 	Double_t PV_diff_z{};
@@ -532,7 +535,7 @@ void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::st
     tree -> Branch("dist_p_PV_xy", &dist_p_PV_xy, "dist_p_PV_xy/D");
 	tree -> Branch("dist_p_PV_xy_custom", &dist_p_PV_xy_custom, "dist_p_PV_xy_custom/D");
 
-    tree -> Branch("Chi2_K_PV_xy", &Chi2_K_PV_xy, "Chi2_K_PV_xy/D");
+    tree -> Branch("chi2_K_PV_xy", &chi2_K_PV_xy, "chi2_K_PV_xy/D");
     tree -> Branch("dist_K_PV_xy", &dist_K_PV_xy, "dist_K_PV_xy/D");
 	tree -> Branch("dist_K_PV_xy_custom", &dist_K_PV_xy_custom, "dist_K_PV_xy_custom/D");
 
@@ -615,6 +618,9 @@ void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::st
 	tree -> Branch("Lc_diff_y", &Lc_diff_y, "Lc_diff_y/D");
 	tree -> Branch("Lc_diff_z", &Lc_diff_z, "Lc_diff_z/D");
 
+	tree->Branch("kf_pv_size_before_re_fit", &kf_pv_size_before_re_fit, "kf_pv_size_before_re_fit/I");
+	tree->Branch("kf_pv_size_after_re_fit", &kf_pv_size_after_re_fit, "kf_pv_size_after_re_fit/I");
+
 	tree -> Branch("PV_diff_x", &PV_diff_x, "PV_diff_x/D");
 	tree -> Branch("PV_diff_y", &PV_diff_y, "PV_diff_y/D");
 	tree -> Branch("PV_diff_z", &PV_diff_z, "PV_diff_z/D");
@@ -643,7 +649,10 @@ void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::st
 		PV_pos_prefit = prim_vtx_fit -> GetVertex();        // PV RC position first approximation.  
 		SelectTracksForPV( PV_pos_prefit );                 // Tracks selection for PV reconstruction
 		if ( !findPVCheck )     continue;                   // Skip if no PV.
-		if ( KFParticles_PV.size() < 5 ) continue;			// Check if have more than 5 tracks fo PV reconstruction.
+		
+		// if ( KFParticles_PV.size() < 5 ) continue;		// Check if have more than 5 tracks for PV reconstruction.
+		kf_pv_size_before_re_fit = KFParticles_PV.size();
+
 		//=========================================================================================================================
 		// Set field in PV position 
 		SpdTrackPropagatorGF fPropagator;
@@ -671,7 +680,6 @@ void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::st
         //=========================================================================================================================
 
         Double_t optimal_cut = 5.0;
-        max_chi2_cut = optimal_cut;
  
         Bool_t continue_removal = true;
  
@@ -695,9 +703,9 @@ void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::st
                 
                 // Recalculate vertex from remaining tracks
                 primVtx = KFParticle(); // Reset vertex
-                for (const auto& particle : KFParticles_PV) {
-                    primVtx += particle; // Add all remaining tracks to rebuild vertex
-                }
+                for (Int_t i = 0; i < KFParticles_PV.size(); ++i) {
+					primVtx += KFParticles_PV[i]; // Add all remaining tracks to rebuild vertex
+				}
                 
             } else {
                 continue_removal = false;
@@ -707,7 +715,8 @@ void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::st
         // Now primVtx contains the updated vertex after removing bad tracks
         // KFParticles_PV contains only the tracks that passed the chi2 cut
 
-		if (KFParticles_PV.size() < 5) continue;
+		// if ( KFParticles_PV.size() < 5 ) continue;		 // Min number of tracks to PV reco after re-fit loop.
+		kf_pv_size_after_re_fit = KFParticles_PV.size();
 
 		PV_diff_ES_x = primVtx.GetX() - truePVPosition.X();
 		PV_diff_ES_y = primVtx.GetY() - truePVPosition.Y();
@@ -943,7 +952,7 @@ void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::st
 
 			Lc.TransportToProductionVertex();
             chi2_Lc_PV_xy = Lc.GetDeviationFromVertexXY(pr_vtx);
-			dist_Lc_PV_xy = Lc.GetDistanceFromVertexXY(pr_vtx)
+			dist_Lc_PV_xy = Lc.GetDistanceFromVertexXY(pr_vtx);
 			dist_Lc_PV_xy_custom = ( Lc_production_position - PV_position ).Mag();
 
             p.TransportToProductionVertex();
@@ -972,7 +981,7 @@ void analyse(SpdMCDataIterator* IT, Int_t N, std::string_view inputFile, std::st
 
             chi2_pip_Lc_xy = pip.GetDeviationFromVertexXY(Lc); 
 			dist_pip_Lc_xy = pip.GetDistanceFromVertexXY(Lc);
-			dist_pip_Lc_xy_custom =  = (Lc_position - tracksPositions_Lc[i_pip]).Mag();
+			dist_pip_Lc_xy_custom = (Lc_position - tracksPositions_Lc[i_pip]).Mag();
 
             chi2_Lc = Lc.GetChi2();
 
@@ -1085,5 +1094,5 @@ void analyze_Lc_pKpi_27_MB( std::string_view inputFile, std::string outputFile )
 {   
 	// SpdMCDataIterator* IT = 0;
 	Int_t nMax{ 100000 };
-	analyse(nMax, inputFile, outputFile); 
+	sv_reconstruction(nMax, inputFile, outputFile); 
 }

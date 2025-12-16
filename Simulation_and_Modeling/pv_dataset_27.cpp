@@ -422,8 +422,8 @@ void analyse(Int_t N, Int_t seed) // N - max event number to analyse
         //         
         //         // Recalculate vertex from remaining tracks
         //         primVtx = KFParticle(); // Reset vertex
-        //         for (const auto& particle : KFParticles_PV) {
-        //             primVtx += particle; // Add all remaining tracks to rebuild vertex
+        //         for (Int_t i = 0; i < KFParticles_PV.size(); ++i) {
+        //             primVtx += KFParticles_PV[i]; // Add all remaining tracks to rebuild vertex
         //         }
         //         
         //         ++num_removed_tracks;
