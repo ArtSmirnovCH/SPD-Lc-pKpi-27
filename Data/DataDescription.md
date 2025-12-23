@@ -3,8 +3,9 @@
 ## Main Info: 
 * Number of Features: 60
 * Number of Entries: 
-    * Signal: 327218
+    * Signal: 343059
     * Background: 1249418
+    * (temp) ITsHits sig eff: 0.511 (in good mass range)
 
 ## Table of Contents  
 [1. SoftWare](.README.md#SoftWare)  
@@ -26,7 +27,7 @@
 
 # Generator & Detector Description
 * Number of Events: 
-    * Signal: 2.115 M
+    * Signal: 2.1645 M
     * Background: 39.2 M
 * Beams parameters:
     ```cpp
@@ -120,11 +121,11 @@ link to PID analysis project here
 * NHitsIts > 2
 
 #### Counts Reduction in $M_{\Lambda_c^+} \in (2.24763; 2.32497)$ $GeV$:
-* Signal: 0.612331
+* Signal: 0.612331  change
 * Background: 0.564550
 
 ### Initial Number of Counts in $M_{\Lambda_c^+} \in (2.24763; 2.32497)$ $GeV$:
-* Signal: 72628
+* Signal: 72628 change
 * Background: 441934
 
 ### Features Description

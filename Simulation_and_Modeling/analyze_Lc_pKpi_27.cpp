@@ -502,6 +502,8 @@ void sv_reconstruction(Int_t N, std::string_view tag, Int_t SEED) // N - max eve
 
 	Int_t true_decay{};
 
+    Int_t id{};
+
 	//======================================================================================================================
 	// Output File
 	TFile* file;
@@ -514,6 +516,8 @@ void sv_reconstruction(Int_t N, std::string_view tag, Int_t SEED) // N - max eve
 	TTree *tree = new TTree("tree", "tree");
 	
 	tree -> Branch("n_event", &n_event, "n_event/I");
+
+    tree -> Branch("id", &id, "id/I");
 
 	tree -> Branch("mass_Lc", &mass_Lc, "#Lambda_c^{+} mass/D");
 			
@@ -649,6 +653,9 @@ void sv_reconstruction(Int_t N, std::string_view tag, Int_t SEED) // N - max eve
     while ( IT -> NextEvent() && n_event < events_max ) 
 	{
 		++n_event;		
+
+        id = SEED * 10000 + n_event;
+
 		multiplicity = mctracks -> GetEntriesFast();
 		if ( mctracks -> GetEntriesFast() < 5 ) continue;					// Check if more then 4 tracks in the event.
 		//=========================================================================================================================

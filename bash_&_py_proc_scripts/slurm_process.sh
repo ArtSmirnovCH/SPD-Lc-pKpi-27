@@ -2,6 +2,7 @@
 
 #SBATCH --job-name=main              # Job name
 #SBATCH --mail-user=a_smirnov@jinr.ru   # Where to send mail
+#SBATCH --mail-type=FAIL
 #SBATCH --no-requeue                    # do not auto requeue on errors
 #SBATCH --ntasks=1                      # Run on a single CPU
 #SBATCH --cpus-per-task=1
@@ -59,9 +60,9 @@ cd ${TMPDIR}
 
 N_max=10000 # Max number of events in each file to process;
 
-cp /afs/jinr.ru/user/a/asmirnov/analyze_Lc_pKpi_27_cluster.cpp ./
+cp /afs/jinr.ru/user/a/asmirnov/analyze_Lc_pKpi_27.cpp ./
 
-singularity run -H ./:/WORKDIR --bind /eos/user/a/asmirnov/reco_data_lambda_c:/WORKDIR /cvmfs/spd.jinr.ru/images/spdroot-dev-4.1.7.4.sif spdroot.py "analyze_Lc_pKpi_27_cluster.cpp(${Signal}, ${SEED}, ${N_max})" > /dev/null
+singularity run -H ./:/WORKDIR --bind /eos/user/a/asmirnov/reco_data_lambda_c:/WORKDIR /cvmfs/spd.jinr.ru/images/spdroot-dev-4.1.7.4.sif spdroot.py "analyze_Lc_pKpi_27.cpp(${Signal}, ${SEED}, ${N_max})" > /dev/null
 
 rm core.*      
 

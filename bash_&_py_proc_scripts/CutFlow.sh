@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Создаём массив для хранения сумм
+# Create array to store sums
 declare -a sums=(0 0 0 0 0 0 0 0 0 0 0 0 0 0) # 13 + 1
 
-# Папка для итогового файла
+# Directory for output file
 input_directory="/eos/user/a/asmirnov/reco_data_lambda_c/analysed_data/signal/txt"
 output_dir="/afs/jinr.ru/user/a/asmirnov/CutFlow"
 output_file="${output_dir}/CutFlow_signal.txt"
@@ -28,7 +28,7 @@ for sum in "${sums[@]}"; do
     echo "$sum" >> "$output_file"
 done
 
-echo "Суммирование завершено. Результаты записаны в $output_file"
+echo "Summation completed. Results written to $output_file"
 
 input_file="$output_file"
 output_file="${output_dir}/CutFlow_ratios_signal.txt"
@@ -41,19 +41,19 @@ while IFS= read -r line; do
             ratio=$(echo "scale=6; $line / $previous_value" | bc)
             echo "$ratio" >> "$output_file"
         else
-            echo "Ошибка: \"$line\" или \"$previous_value\" не является числом." >> "$output_file"
+            echo "Error: \"$line\" or \"$previous_value\" is not a number." >> "$output_file"
         fi
     fi
     previous_value="$line"
 done < "$input_file"
 
-echo "Результаты записаны в '$output_file'."
+echo "Results written to '$output_file'."
 
 
 declare -a sums=(0 0 0 0 0 0 0 0 0 0 0 0 0 0) # 13 + 1
 
 # II
-# Папка для итогового файла
+# Directory for output file
 input_directory="/eos/user/a/asmirnov/reco_data_lambda_c/analysed_data/background/txt/"
 output_dir="/afs/jinr.ru/user/a/asmirnov/CutFlow"
 output_file="${output_dir}/CutFlow_background.txt"
@@ -74,30 +74,30 @@ for sum in "${sums[@]}"; do
     echo "$sum" >> "$output_file"
 done
 
-echo "Суммирование завершено. Результаты записаны в $output_file"
+echo "Summation completed. Results written to $output_file"
 
 input_file="$output_file"
 output_file="${output_dir}/CutFlow_ratios_background.txt"
 
-# Инициализируем предыдущую переменную
+# Initialize previous value variable
 previous_value=""
 
-# Читаем файл построчно
+# Read file line by line
 while IFS= read -r line; do
-    # Если предыдущая строка не пустая, вычисляем отношение
+    # If previous line is not empty, calculate ratio
     if [[ -n "$previous_value" ]]; then
-        # Проверяем, что оба значения являются числами
+        # Check that both values are numbers
         if [[ "$line" =~ ^-?[0-9]+(\.[0-9]+)?$ && "$previous_value" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
             ratio=$(echo "scale=6; $line / $previous_value" | bc)
             echo "$ratio" >> "$output_file"
         else
-            echo "Ошибка: \"$line\" или \"$previous_value\" не является числом." >> "$output_file"
+            echo "Error: \"$line\" or \"$previous_value\" is not a number." >> "$output_file"
         fi
     fi
-    # Запоминаем текущее значение для следующей итерации
+    # Store current value for next iteration
     previous_value="$line"
 done < "$input_file"
 
-echo "Результаты записаны в '$output_file'."
+echo "Results written to '$output_file'."
 
 exit

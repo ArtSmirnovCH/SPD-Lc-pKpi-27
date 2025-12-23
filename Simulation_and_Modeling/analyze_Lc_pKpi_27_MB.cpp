@@ -350,7 +350,7 @@ void CheckTracks( SpdMCParticle* (&particles)[3], Int_t (&pdgs)[3] )
 //======================================================================================================================
 // Main analysis
 //======================================================================================================================
-void sv_reconstruction(Int_t N, std::string_view inputFile, std::string outputFile) // N - max event number to analyse
+void sv_reconstruction(Int_t seed, Int_t N, std::string_view inputFile, std::string outputFile) // N - max event number to analyse
 {
 	SpdMCDataIterator* IT = new SpdMCDataIterator();
 
@@ -492,6 +492,8 @@ void sv_reconstruction(Int_t N, std::string_view inputFile, std::string outputFi
 	Double_t PV_diff_ES_z{};
 
 	Int_t true_decay{};
+
+    Int_t id{};
 	//======================================================================================================================
 	// Output File
 	TFile* file = new TFile(outputFile.c_str(), "RECREATE");
@@ -499,6 +501,8 @@ void sv_reconstruction(Int_t N, std::string_view inputFile, std::string outputFi
 	// TTree
 	TTree *tree = new TTree("tree", "tree");
 	
+    tree -> Branch("id", &id, "id/I");
+
 	tree -> Branch("n_event", &n_event, "n_event/I");
 
 	tree -> Branch("mass_Lc", &mass_Lc, "#Lambda_c^{+} mass/D");
@@ -635,7 +639,8 @@ void sv_reconstruction(Int_t N, std::string_view inputFile, std::string outputFi
     while ( IT -> NextEvent() && n_event < events_max ) 
 	{
 		++n_event;		
-		multiplicity = mctracks -> GetEntriesFast();
+		id = seed * 10000 + n_event;
+        multiplicity = mctracks -> GetEntriesFast();
 		if ( mctracks -> GetEntriesFast() < 5 ) continue;					// Check if more then 4 tracks in the event.
 		//=========================================================================================================================
 		// Primary vertex reconstruction
@@ -1011,9 +1016,9 @@ void sv_reconstruction(Int_t N, std::string_view inputFile, std::string outputFi
 			const TVector3 momentum_pip{pip.GetPx(), pip.GetPy(), 0 };
 			const TVector3 sum_momentum{momentum_p + momentum_K + momentum_pip}; // Sum momentum of p, K, pi from Lc
 
-			cosAngle_r_Lc_momentum_Lc = r_Lc.Angle(momentum_Lc);
-			cosAngle_r_Lc_sum_momentum = r_Lc.Angle(sum_momentum);
-			cosAngle_momentum_Lc_sum_momentum = momentum_Lc.Angle(sum_momentum);
+			cosAngle_r_Lc_momentum_Lc_xy = r_Lc.Angle(momentum_Lc);
+			cosAngle_r_Lc_sum_momentum_xy = r_Lc.Angle(sum_momentum);
+			cosAngle_momentum_Lc_sum_momentum_xy = momentum_Lc.Angle(sum_momentum);
 			//==================================================================================
 			// Selection
 			//==================================================================================
@@ -1090,9 +1095,9 @@ void sv_reconstruction(Int_t N, std::string_view inputFile, std::string outputFi
 //======================================================================================================================
 // Launcher function
 //======================================================================================================================
-void analyze_Lc_pKpi_27_MB( std::string_view inputFile, std::string outputFile ) 
+void analyze_Lc_pKpi_27_MB( Int_t seed, std::string_view inputFile, std::string outputFile ) 
 {   
 	// SpdMCDataIterator* IT = 0;
 	Int_t nMax{ 100000 };
-	sv_reconstruction(nMax, inputFile, outputFile); 
+	sv_reconstruction(seed, nMax, inputFile, outputFile); 
 }
