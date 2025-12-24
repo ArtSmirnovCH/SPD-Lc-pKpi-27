@@ -292,7 +292,9 @@ def fit_distr_double_gauss(distr: Union[pd.Series, np.ndarray],
               optimize_method: str = 'L-BFGS-B',
               plot: bool = False,
               bins: int = 40,
-              max_iter: int = 1000) -> Tuple:
+              max_iter: int = 1000,
+              scaler: float = 1e4,
+              unit_name: str = '$\mu m$') -> Tuple:
 
     data = np.asarray(distr)
 
@@ -621,12 +623,12 @@ def fit_distr_double_gauss(distr: Union[pd.Series, np.ndarray],
             
             # Format parameter strings with errors
             if not np.isnan(param_errors[1]):
-                g1_label = fr'Gaussian 1: $\mu$={fit_params[1] * 1e4:.2f} $\pm$ {param_errors[1] * 1e4:.2f} $\mu m$'
-                g2_label = fr'Gaussian 2: $\mu$={fit_params[4] * 1e4:.2f} $\pm$ {param_errors[4] * 1e4:.2f} $\mu m$'
+                g1_label = fr'Gaussian 1: $\mu$={fit_params[1] * scaler:.2f} $\pm$ {param_errors[1] * scaler:.2f} {unit_name}'
+                g2_label = fr'Gaussian 2: $\mu$={fit_params[4] * scaler:.2f} $\pm$ {param_errors[4] * scaler:.2f} {unit_name}'
                 const_label = fr'Const: C={fit_params[6]:.2f} $\pm$ {param_errors[6]:.2f}'
             else:
-                g1_label = fr'Gaussian 1: $\mu$={fit_params[1] * 1e4:.2f} $\mu m$'
-                g2_label = fr'Gaussian 2: $\mu$={fit_params[4] * 1e4:.2f} $\mu m$'
+                g1_label = fr'Gaussian 1: $\mu$={fit_params[1] * scaler:.2f} {unit_name}'
+                g2_label = fr'Gaussian 2: $\mu$={fit_params[4] * scaler:.2f} {unit_name}'
                 const_label = fr'Const: C={fit_params[6]:.2f}'
             
             axes[0].plot(x_fit, g1, 'g:', label=g1_label, alpha=0.7)
@@ -636,21 +638,21 @@ def fit_distr_double_gauss(distr: Union[pd.Series, np.ndarray],
             # Add fit parameters as text with errors
             if not np.isnan(param_errors[0]):
                 fit_text = (fr'Fit Parameters:'
-                          fr'\\G1: A={fit_params[0]:.1f} $\pm$ {param_errors[0]:.1f},\\ $\mu$={fit_params[1] * 1e4:.3f} $\pm$ {param_errors[1] * 1e4:.3f} $\mu m$,\\ $\sigma$={fit_params[2] * 1e4:.3f} $\pm$ {param_errors[2] * 1e4:.3f} $\mu m$'
-                          fr'\\G2: A={fit_params[3]:.1f} $\pm$ {param_errors[3]:.1f},\\ $\mu$={fit_params[4] * 1e4:.3f} $\pm$ {param_errors[4] * 1e4:.3f} $\mu m$,\\ $\sigma$={fit_params[5] * 1e4:.3f} $\pm$ {param_errors[5] * 1e4:.3f} $\mu m$'
+                          fr'\\G1: A={fit_params[0]:.1f} $\pm$ {param_errors[0]:.1f},\\ $\mu$={fit_params[1] * scaler:.3f} $\pm$ {param_errors[1] * scaler:.3f} {unit_name},\\ $\sigma$={fit_params[2] * scaler:.3f} $\pm$ {param_errors[2] * scaler:.3f} {unit_name}'
+                          fr'\\G2: A={fit_params[3]:.1f} $\pm$ {param_errors[3]:.1f},\\ $\mu$={fit_params[4] * scaler:.3f} $\pm$ {param_errors[4] * scaler:.3f} {unit_name},\\ $\sigma$={fit_params[5] * scaler:.3f} $\pm$ {param_errors[5] * scaler:.3f} {unit_name}'
                           fr'\\Const: C={fit_params[6]:.1f} $\pm$ {param_errors[6]:.1f}'
                           fr'\\$\chi^2$/ndf = {chi2:.1f}/{n_dof}')
             else:
                 fit_text = (fr'Fit Parameters:'
-                          fr'\\G1: A={fit_params[0]:.1f},\\ $\mu$={fit_params[1] * 1e4:.3f} $\mu m$,\\ $\sigma$={fit_params[2] * 1e4:.3f} $\mu m$'
-                          fr'\\G2: A={fit_params[3]:.1f},\\ $\mu$={fit_params[4] * 1e4:.3f} $\mu m$,\\ $\sigma$={fit_params[5] * 1e4:.3f} $\mu m$'
+                          fr'\\G1: A={fit_params[0]:.1f},\\ $\mu$={fit_params[1] * scaler:.3f} {unit_name},\\ $\sigma$={fit_params[2] * scaler:.3f} {unit_name}'
+                          fr'\\G2: A={fit_params[3]:.1f},\\ $\mu$={fit_params[4] * scaler:.3f} {unit_name},\\ $\sigma$={fit_params[5] * scaler:.3f} {unit_name}'
                           fr'\\Const: C={fit_params[6]:.1f}'
                           fr'\\$\chi^2$/ndf = {chi2:.1f}/{n_dof}')
             
             if effective_sigma_err is not None and not np.isnan(effective_sigma_err):
-                fit_text += fr'\\Effective $\sigma$: {effective_sigma * 1e4:.4f} $\pm$ {effective_sigma_err * 1e4:.4f} $\mu m$'
+                fit_text += fr'\\Effective $\sigma$: {effective_sigma * scaler:.4f} $\pm$ {effective_sigma_err * scaler:.4f} {unit_name}'
             else:
-                fit_text += fr'\\Effective $\sigma$: {effective_sigma * 1e4:.4f} $\mu m$'
+                fit_text += fr'\\Effective $\sigma$: {effective_sigma * scaler:.4f} {unit_name}'
             
             axes[0].text(0.02, 0.98, fit_text, transform=axes[0].transAxes,
                         verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8), fontsize=9)

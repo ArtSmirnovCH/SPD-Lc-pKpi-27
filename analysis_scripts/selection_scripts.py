@@ -115,8 +115,12 @@ def auto_preselection(df: pd.DataFrame,
             continue
         
         # Handle special angular features
-        if feature in ('cosAngle_r_Lc_momentum_Lc_left','cosAngle_r_Lc_sum_momentum_left',
-                       'cosAngle_r_Lc_momentum_Lc_right', 'cosAngle_r_Lc_sum_momentum_right'):
+        if feature in (
+            'cosAngle_r_Lc_momentum_Lc_xy_left',
+            'cosAngle_r_Lc_momentum_Lc_xy_right',
+            'cosAngle_r_Lc_sum_momentum_xy_left',
+            'cosAngle_r_Lc_sum_momentum_xy_right'
+        ):
             suff = feature.split('_')[-1]
             base_feature = feature.rstrip(f'_{suff}')
             

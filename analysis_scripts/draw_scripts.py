@@ -197,10 +197,10 @@ def draw_feature_distribution(df: pd.DataFrame,
 
 def draw_roc(tpr: List,
              fpr: List,
-             best_cut_x: float,
-             best_tpr: float,
-             best_fpr: float,
              select_direction: str,
+             best_cut_x: float = None,
+             best_tpr: float = None,
+             best_fpr: float = None,
              mask: np.ndarray = None,
              min_sig_sel: float = None) -> Tuple:
     """
@@ -302,12 +302,13 @@ def draw_roc(tpr: List,
     if select_direction not in sel_dir:
         raise ValueError(f"select_direction must be 'right' or 'left', got '{select_direction}'")
 
-    # Add threshold annotation text
-    ax.text(best_fpr + 0.02, best_tpr - 0.05,
-            f'Threshold: {sel_dir[select_direction]} {best_cut_x:.3f}\n'
-            f'TPR: {best_tpr:.3f}, FPR: {best_fpr:.3f}',
-            fontsize=10, 
-            bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8))
+    if (best_cut_x is not None) and (best_tpr is not None) and (best_fpr is not None):
+        # Add threshold annotation text
+        ax.text(best_fpr + 0.02, best_tpr - 0.05,
+                f'Threshold: {sel_dir[select_direction]} {best_cut_x:.3f}\n'
+                f'TPR: {best_tpr:.3f}, FPR: {best_fpr:.3f}',
+                fontsize=10, 
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8))
 
     # Set plot limits and labels
     ax.set_xlim([0.0, 1.0])
