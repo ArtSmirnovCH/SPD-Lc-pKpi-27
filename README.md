@@ -1,12 +1,12 @@
 # Feasibility Study of $\Lambda_c^{+}$ Production in pp Collisions with the SPD Stage II Detector
 
 ## Table of Contents  
-[1. Project Description](.README.md#Project-Description)  
-[2. Objectives](.README.md#Objectives)  
-[3. Data Description](.README.md#Data-Description)  
-[4. Stages of Work on the Project](.README.md#Stages-of-Work-on-the-Project) 
-[5. Project Structure](.README.md#Project-Structure)  
-[6. Conclusions](.README.md#Conclusions) 
+[1. Project Description](.README.md#project-description)  
+[2. Objectives](.README.md#objectives)  
+[3. Data Description](.README.md#data-description)  
+[4. Stages of Work on the Project](.README.md#stages-of-work-on-the-project) 
+[5. Project Structure](.README.md#project-structure)  
+[6. Conclusions](.README.md#conclusions) 
 
 ### Project Description    
 The project involves the complete chain of generation, detector simulation, and event analysis for the full-scale simulation of the production of the charmed $\Lambda_c^+$ baryon under the conditions of the second stage of the SPD experiment at the NICA collider. The decay channel under study is $\Lambda_c^{+} \to p^{+}K^{-}\pi^{+}$. 
