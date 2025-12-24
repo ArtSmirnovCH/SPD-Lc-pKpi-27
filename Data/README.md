@@ -1,12 +1,11 @@
 # Data Description
 
-## Table of Contents  
-[1. analysed_signal.csv & analysed_background.csv](.README.md#analysed_signal.csv-&-analysed_background.csv)  
-[2. ana_PV_27_var_1.csv & ana_PV_27_var_2.csv](.README.md#ana_PV_27_var_1.csv-&-ana_PV_27_var_2.csv)  
-[3. pid_ana.csv](.README.md#pid_ana.csv)  
+[1. analysed_signal and analysed_background](#analysed_signal-and-analysed_background)  
+[2. ana_PV_27_var_1 and ana_PV_27_var_2](#ana_pv_27_var_1-and-ana_pv_27_var_2)  
+[3. pid_ana](#pid_ana)
 
 
-## analysed_signal.csv & analysed_background.csv: 
+## analysed_signal and analysed_background:
 
 ### Main info:
 * Number of Features: 71
@@ -193,7 +192,7 @@ PV Reconstruction Quality Indicators:
 
 * kf_pv_size_after_re_fit — Number of tracks used in primary vertex fit after re-reconstruction
 
-## ana_PV_27_var_1.csv & ana_PV_27_var_2.csv: 
+## ana_PV_27_var_1 and ana_PV_27_var_2: 
 
 ### Main info:
 * Number of Features: 14
@@ -242,7 +241,7 @@ Enhanced PV Reconstruction (After Re-fitting):
 * tracks_per_vertex — Average number of tracks associated with the primary vertex per event
 
 
-## pid_ana.csv: 
+## pid_ana: 
 
 ### Main info:
 * Number of Features: 22

@@ -1,17 +1,17 @@
 # Feasibility Study of $\Lambda_c^{+}$ Production in pp Collisions with the SPD Stage II Detector
 
 ## Table of Contents  
-[1. Project Description](.README.md#project-description)  
-[2. Objectives](.README.md#objectives)  
-[3. Data Description](.README.md#data-description)  
-[4. Stages of Work on the Project](.README.md#stages-of-work-on-the-project) 
-[5. Project Structure](.README.md#project-structure)  
-[6. Conclusions](.README.md#conclusions) 
+[1. Project Description](#project-description)  
+[2. Objectives](#objectives)  
+[3. Data Description](#data-description)  
+[4. Stages of Work on the Project](#stages-of-work-on-the-project) 
+[5. Project Structure](#project-structure)  
+[6. Conclusions](#conclusions) 
 
-### Project Description    
+## Project Description    
 The project involves the complete chain of generation, detector simulation, and event analysis for the full-scale simulation of the production of the charmed $\Lambda_c^+$ baryon under the conditions of the second stage of the SPD experiment at the NICA collider. The decay channel under study is $\Lambda_c^{+} \to p^{+}K^{-}\pi^{+}$. 
 
-### Objectives:
+## Objectives:
 * Conduct reliable simulation of the production of the charmed $\Lambda_c^+$ baryon.
 
 * Perform accurate simulation of the SPD detector in the configuration of the second stage of the experiment.
@@ -25,11 +25,11 @@ The project involves the complete chain of generation, detector simulation, and 
 * To assess the feasibility of measuring Transverse Single Spin Asymmetry of $\Lambda_c^+$ production by evaluating statistical uncertainties.
 
 
-### Data Description:
+## Data Description:
 Data was created at cluster JINR (CIVC).
-Detailed description can be found in Data directory [here](https://github.com/ArtSmirnovCH/SPD-Lc-pKpi-27/blob/master/Data/DataDescription.md).
+Detailed description can be found in Data directory [here](https://github.com/ArtSmirnovCH/SPD-Lc-pKpi-27/blob/master/Data/README.md).
 
-### Stages of Work on the Project:
+## Stages of Work on the Project:
 1. Set up a correct simulation of Lc production and the detector model.
 [Simulation (ipynb)](https://github.com/ArtSmirnovCH/SPD-Lc-pKpi-27/tree/master/Simulation_and_Modeling)
 
@@ -54,7 +54,7 @@ Detailed description can be found in Data directory [here](https://github.com/Ar
 
 8. MVA... (Investigate/Implement a Multivariate Analysis approach)
 
-### Project Structure:
+## Project Structure:
 ```console
 ├── ./
 │   ├── .gitignore
@@ -102,6 +102,6 @@ Detailed description can be found in Data directory [here](https://github.com/Ar
 
 ```
 
-### Conclusions:
+## Conclusions:
 
 ...

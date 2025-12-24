@@ -1,12 +1,12 @@
 # Scripts Key Points Description
 
 ## Table of Contents  
-[1. SoftWare](.README.md#SoftWare)  
-[2. sim_27.cpp](.README.md#sim_27.cpp)  
-[3. reco_27.cpp](.README.md#reco_27.cpp)  
-[4. analyze_Lc_pKpi_27.cpp & analyze_Lc_pKpi_27_MB.cpp](.README.md#analyze_Lc_pKpi_27.cpp-&-analyze_Lc_pKpi_27_MB.cpp)  
-[5. pid_dataset_27.cpp](.README.md#pid_dataset_27.cpp)
-[6. pv_dataset_27.cpp](.README.md#pv_dataset_27.cpp)
+[1. SoftWare](#software)  
+[2. sim_27](#sim_27)    
+[3. reco_27](#reco_27)  
+[4. analyze_Lc_pKpi_27 and analyze_Lc_pKpi_27_MB](#analyze_lc_pkpi_27-and-analyze_lc_pkpi_27_mb)    
+[5. pid_dataset_27](#pid_dataset_27)    
+[6. pv_dataset_27](#pv_dataset_27)
 
 
 ## SoftWare
@@ -14,7 +14,7 @@
 * KFParticle
 * Pythia8
 
-## sim_27.cpp
+## sim_27
 
 ### Generator Set Up:
 * Beams parameters:
@@ -47,7 +47,7 @@
     * Particle Identification:
         * Time-of-Flight System
 
-## reco_27.cpp
+## reco_27
 
 * Preselection for tracks parameters:
     ```cpp
@@ -59,7 +59,7 @@
     track_finder->CheckMinPartMomentum(true,0.15);
     ```
 
-## analyze_Lc_pKpi_27.cpp & analyze_Lc_pKpi_27_MB.cpp
+## analyze_Lc_pKpi_27 and analyze_Lc_pKpi_27_MB
 
 ### PID:
 
@@ -83,10 +83,10 @@
     track -> GetNHitsIts() < 3 ... continue
 ```
 
-## pid_dataset_27.cpp
-
-## pv_dataset_27.cpp
-
+## pid_dataset_27
+...
+## pv_dataset_27
+...
 
 
 
