@@ -2,9 +2,23 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from math import ceil
 from sklearn.metrics import auc
-from typing import Tuple, List
+from typing import Tuple, List, Union
+import os
+import sys
 
+# Path setup
+try:
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+except NameError:
+    current_dir = os.getcwd()
+    
+parent_dir = os.path.join(current_dir, '..', '..')
+sys.path.insert(0, parent_dir)
+
+from analysis_scripts.config import CFG
+from analysis_scripts.estimate_scripts import get_mass_distributions
 
 ###########################################################################################################
 # draw_distribution_pair
@@ -467,3 +481,199 @@ def hist_plot(
     ax.spines['right'].set_visible(False)
 
     ax.grid(True, alpha=0.8, linestyle='--')
+    
+    
+###########################################################################################################
+# total_spectrum
+###########################################################################################################
+
+def total_spectrum(sig_mass_distr: Union[pd.Series, np.ndarray], 
+                     bg_mass_distr: Union[pd.Series, np.ndarray], 
+                     have_sig_events: int,
+                     have_bg_events: int,
+                     mass_interval: Tuple[float, float] = (2.24763, 2.32497),
+                     gev_per_bin: float = 0.000773,# (2.32497 - 2.24763) / 100
+                     log_y: bool = True,
+                     total: bool = True,
+                     only_total: bool = False,
+                     line_style: str = '--'):
+    """
+    """
+    
+    # Calculate scaling weights to match real event expectations
+    sig_weight = CFG.real_sig_events / have_sig_events
+    bg_weight = CFG.real_bg_events / have_bg_events
+    
+    sig_mass_distr = np.asarray(sig_mass_distr)
+    bg_mass_distr = np.asarray(bg_mass_distr)
+    
+    # Create weight arrays for signal and background
+    weights_sig = np.full_like(sig_mass_distr, sig_weight, dtype=float)
+    weights_bg = np.full_like(bg_mass_distr, bg_weight, dtype=float)
+    
+    mass_combined = np.concatenate([sig_mass_distr, bg_mass_distr])
+    weights_combined = np.concatenate([weights_sig, weights_bg])
+    labels_combined = np.concatenate([np.full(len(sig_mass_distr), 'Signal'), 
+                                      np.full(len(bg_mass_distr), 'Background')])
+
+    mass_df = pd.DataFrame({
+        'mass': mass_combined,
+        'weights': weights_combined,
+        'type': labels_combined,
+    })
+
+    mass_mask = (mass_df['mass'] >= mass_interval[0]) & (mass_df['mass'] <= mass_interval[1])
+    mass_df = mass_df[mass_mask]
+
+    bins = ceil( (mass_interval[1] - mass_interval[0]) / gev_per_bin )
+    binrange = (mass_df['mass'].min(), mass_df['mass'].max())
+
+    bin_edges = np.linspace(binrange[0], binrange[1], bins + 1)
+    bin_centers = (bin_edges[1:] + bin_edges[:-1]) / 2
+    
+    # Calculate weighted histograms
+    signal_data = mass_df[mass_df['type'] == 'Signal']
+    background_data = mass_df[mass_df['type'] == 'Background']
+
+    sig_heights, _ = np.histogram(
+        signal_data['mass'],
+        weights=signal_data['weights'],
+        bins=bin_edges
+    )
+
+    bg_heights, _ = np.histogram(
+        background_data['mass'],
+        weights=background_data['weights'],
+        bins=bin_edges
+    )
+
+    total_heights = sig_heights + bg_heights
+
+    fig, ax = plt.subplots(figsize=(6, 6))
+
+    colors = {'Signal': '#1f77b4', 'Background': 'black', 'total': '#2ca02c'}
+    
+    if not total or (total and not only_total):
+        
+        ax.step(
+            bin_edges[:-1],
+            sig_heights,
+            where='post',
+            color=colors['Signal'],
+            linewidth=2,
+            linestyle=line_style,
+            label='Signal'
+        )
+        
+        ax.step(
+            bin_edges[:-1],
+            bg_heights,
+            where='post',
+            color=colors['Background'],
+            linewidth=2,
+            linestyle=line_style,
+            label='Background'
+        )
+
+    if total:
+        ax.step(
+            bin_edges[:-1],
+            total_heights,
+            where='post',
+            color=colors['total'],
+            linewidth=2.5,
+            linestyle=line_style,
+            label='Total (S+B)'
+        )
+
+    if log_y:
+        ax.set_yscale('log')
+        # ax.set_ylim(bottom=0.1)
+
+    ax.set_title('Yield Mass Distribution', fontsize=16, fontweight='bold', pad=20)
+    ax.set_xlabel('Mass (GeV)', fontweight='bold', fontsize=12)
+    y_label = 'Counts (log scale)' if log_y else 'Counts'
+    ax.set_ylabel(y_label, fontweight='bold', fontsize=12)
+
+    ax.legend(
+        loc='best',
+        title='Mass Spectrum',
+        frameon=True,
+        fancybox=True,
+        shadow=True
+    )
+
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.grid(True, alpha=0.8, linestyle='--')
+    
+    plt.tight_layout()
+    return fig, ax
+    
+
+###########################################################################################################
+# tssa_plot
+###########################################################################################################
+
+def tssa_plot(
+    sig_mass_distr: Union[pd.Series, np.ndarray], 
+    bg_mass_distr: Union[pd.Series, np.ndarray], 
+    have_sig_events: int,
+    have_bg_events: int,
+    fit_params: Union[List, np.ndarray],
+    sig_eff: float,
+    bg_eff: float,
+    borders_pos: Union[List, np.ndarray],
+    mass_interval: Tuple[float, float] = (2.24763, 2.32497),
+    gev_per_bin: float = 0.000773,# (2.32497 - 2.24763) / 100
+    log_y: bool = True,
+    total: bool = True,
+    only_total: bool = False,
+    line_style: str = '--'):
+    
+    """
+    params: 7 parameters [A1, mu1, sigma1, A2, mu2, sigma2, A3, b, c]
+    borders_pos: 6 params [left_left_bg, left_right_bg, left_sif, right_sig, right_left_bg, right_right_bg]
+    """
+    
+    fig, ax = total_spectrum(
+        sig_mass_distr=sig_mass_distr, 
+        bg_mass_distr=bg_mass_distr, 
+        have_sig_events=have_sig_events / sig_eff,
+        have_bg_events=have_bg_events / bg_eff,
+        mass_interval=mass_interval,
+        gev_per_bin=gev_per_bin,
+        log_y=log_y,
+        total=total,
+        only_total=only_total,
+        line_style=line_style
+    )
+    
+    total_heights, total_heights_errors, sig_heights, sig_heights_errors, bg_heights, bg_heights_errors, bin_edges, bin_centers = get_mass_distributions(
+        sig_mass_distr=sig_mass_distr, 
+        bg_mass_distr=bg_mass_distr, 
+        have_sig_events=have_sig_events / sig_eff, 
+        have_bg_events=have_bg_events / bg_eff,
+        mass_interval=mass_interval,
+        gev_per_bin=0.000773
+    )
+            
+    x_bins = np.linspace(bin_edges[0], bin_edges[-1], 200)
+            
+    g1 = fit_params[0] * np.exp(-0.5 * ((x_bins - fit_params[1]) / fit_params[2]) ** 2)
+    g2 = fit_params[3] * np.exp(-0.5 * ((x_bins - fit_params[4]) / fit_params[5]) ** 2)
+    pol2 = fit_params[6] + fit_params[7] * x_bins + fit_params[8] * x_bins**2
+
+    g1_label = 'Gaussian 1'
+    g2_label = 'Gaussian 2'
+    pol2_label = 'Pol2'
+    total_label = "Fit"
+    
+    ax.plot(x_bins, g1, 'g:', label=g1_label, alpha=0.7)
+    ax.plot(x_bins, g2, 'b:', label=g2_label, alpha=0.7)
+    ax.plot(x_bins, pol2, 'm:', label=pol2_label, alpha=0.7)
+    ax.plot(x_bins, g1 + g2 + pol2, 'm:', label=total_label, alpha=0.7)
+    
+    plt.tight_layout()
+    return fig, ax
+    

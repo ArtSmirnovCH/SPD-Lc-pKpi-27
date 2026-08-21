@@ -2,9 +2,12 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from scipy.integrate import quad
+from scipy.special import erf
 from typing import Tuple, Union
 import sys
 import os
+from math import ceil
 
 
 # Path setup
@@ -28,6 +31,7 @@ def signal_estimates(sig_mass_distr: Union[pd.Series, np.ndarray],
                      have_sig_events: int,
                      have_bg_events: int,
                      mass_interval: Tuple[float, float] = (2.24763, 2.32497),
+                     total_spectrum: bool = False,
                      visualization: bool = False,
                      verbose: bool = True) -> Tuple[float, float, int, int, int, int]:
     """
@@ -125,6 +129,8 @@ def signal_estimates(sig_mass_distr: Union[pd.Series, np.ndarray],
         bins=bin_edges
     )
 
+    total_heights = sig_heights + bg_heights
+
     # Calculate significance metrics per bin
     s_b_ratio = np.divide(
         sig_heights,
@@ -176,6 +182,18 @@ def signal_estimates(sig_mass_distr: Union[pd.Series, np.ndarray],
             linewidth=2,
             ax=axes[0]
         )
+
+        if total_spectrum:
+            axes[0].step(
+                bin_edges[:-1], 
+                total_heights,
+                where='post',
+                color='#2ca02c',
+                linewidth=2.5,
+                linestyle='--',
+                label='Total (S+B)'
+            )
+               
 
         axes[0].set_title('Yield Mass Distribution', fontsize=16, fontweight='bold', pad=20)
         axes[0].set_xlabel('Mass (GeV)', fontweight='bold', fontsize=12)
@@ -562,3 +580,306 @@ def check_thresholds(
     
     ax.legend()
     plt.tight_layout()
+    
+    
+###########################################################################################################
+# get_mass_distributions
+###########################################################################################################
+def get_mass_distributions(sig_mass_distr: Union[pd.Series, np.ndarray], 
+                     bg_mass_distr: Union[pd.Series, np.ndarray], 
+                     have_sig_events: int,
+                     have_bg_events: int,
+                     gev_per_bin: float = 0.000773,# (2.32497 - 2.24763) / 100
+                     mass_interval: Tuple[float, float] = (2.24763, 2.32497)):
+    """
+    """
+    
+    # Calculate scaling weights to match real event expectations
+    sig_weight = CFG.real_sig_events / have_sig_events
+    bg_weight = CFG.real_bg_events / have_bg_events
+    
+    sig_mass_distr = np.asarray(sig_mass_distr)
+    bg_mass_distr = np.asarray(bg_mass_distr)
+    
+    # Create weight arrays for signal and background
+    weights_sig = np.full_like(sig_mass_distr, sig_weight, dtype=float)
+    weights_bg = np.full_like(bg_mass_distr, bg_weight, dtype=float)
+    
+    mass_combined = np.concatenate([sig_mass_distr, bg_mass_distr])
+    weights_combined = np.concatenate([weights_sig, weights_bg])
+    labels_combined = np.concatenate([np.full(len(sig_mass_distr), 'Signal'), 
+                                      np.full(len(bg_mass_distr), 'Background')])
+
+    mass_df = pd.DataFrame({
+        'mass': mass_combined,
+        'weights': weights_combined,
+        'type': labels_combined,
+    })
+
+    mass_mask = (mass_df['mass'] >= mass_interval[0]) & (mass_df['mass'] <= mass_interval[1])
+    mass_df = mass_df[mass_mask]
+
+    bins = ceil( (mass_interval[1] - mass_interval[0]) / gev_per_bin )
+    binrange = (mass_df['mass'].min(), mass_df['mass'].max())
+
+    bin_edges = np.linspace(binrange[0], binrange[1], bins + 1)
+    bin_centers = (bin_edges[1:] + bin_edges[:-1]) / 2
+    
+    # Calculate weighted histograms
+    signal_data = mass_df[mass_df['type'] == 'Signal']
+    background_data = mass_df[mass_df['type'] == 'Background']
+
+    sig_heights, _ = np.histogram(
+        signal_data['mass'],
+        weights=signal_data['weights'],
+        bins=bin_edges
+    )
+
+    bg_heights, _ = np.histogram(
+        background_data['mass'],
+        weights=background_data['weights'],
+        bins=bin_edges
+    )
+
+    total_heights = sig_heights + bg_heights
+
+    # Errors
+    sig_counts, _ = np.histogram(
+        signal_data['mass'],
+        bins=bin_edges
+    )
+    
+    bg_counts, _ = np.histogram(
+        background_data['mass'],
+        bins=bin_edges
+    )
+    
+    sig_heights_errors = np.sqrt(sig_counts) * sig_weight
+    bg_heights_errors = np.sqrt(bg_counts) * bg_weight
+    
+    total_heights_errors = np.sqrt(sig_heights_errors**2 + bg_heights_errors**2)
+    
+    return total_heights, total_heights_errors, sig_heights, sig_heights_errors, bg_heights, bg_heights_errors, bin_edges, bin_centers
+
+
+
+###########################################################################################################
+# calculate_sb_ratio_calculate_sb_ratio_2gauss_const
+###########################################################################################################
+def calculate_sb_ratio_2gauss_const(
+    fit_params,
+    bin_edges,
+    mass_interval=None,
+    cov_matrix=None
+):
+    """
+    Calculate S/B and its uncertainty for:
+ 
+    f(x) = A1 * exp(-0.5*((x-mu1)/sigma1)**2)
+         + A2 * exp(-0.5*((x-mu2)/sigma2)**2)
+         + C
+ 
+    Parameters
+    ----------
+    fit_params : array
+        [A1, mu1, sigma1, A2, mu2, sigma2, C]
+ 
+    bin_edges : array
+        Histogram bin edges.
+ 
+    mass_interval : tuple or None
+        Integration interval.
+ 
+    cov_matrix : 2D array
+        Full covariance matrix from the fit.
+    """
+ 
+    fit_params = np.asarray(fit_params, dtype=float)
+ 
+    if mass_interval is None:
+        x_min = bin_edges[0]
+        x_max = bin_edges[-1]
+    else:
+        x_min, x_max = mass_interval
+ 
+    def gaussian_integral(A, mu, sigma):
+ 
+        z_min = (x_min - mu) / (np.sqrt(2) * sigma)
+        z_max = (x_max - mu) / (np.sqrt(2) * sigma)
+ 
+        return (
+            A
+            * sigma
+            * np.sqrt(np.pi / 2)
+            * (erf(z_max) - erf(z_min))
+        )
+ 
+    def calculate_R(params):
+ 
+        A1, mu1, sigma1, A2, mu2, sigma2, C = params
+ 
+        S1 = gaussian_integral(A1, mu1, sigma1)
+        S2 = gaussian_integral(A2, mu2, sigma2)
+ 
+        S = S1 + S2
+ 
+        B = C * (x_max - x_min)
+ 
+        R = S / B
+ 
+        return S, B, R
+ 
+    S, B, R = calculate_R(fit_params)
+ 
+    result = {
+        'signal': S,
+        'background': B,
+        'S_B_ratio': R,
+        'integration_range': (x_min, x_max)
+    }
+ 
+    if cov_matrix is not None:
+ 
+        cov_matrix = np.asarray(cov_matrix, dtype=float)
+ 
+        gradient = np.zeros(len(fit_params))
+ 
+        for i in range(len(fit_params)):
+ 
+            params_plus = fit_params.copy()
+            params_minus = fit_params.copy()
+ 
+            step = 1e-5 * max(abs(fit_params[i]), 1.0)
+ 
+            params_plus[i] += step
+            params_minus[i] -= step
+ 
+            _, _, R_plus = calculate_R(params_plus)
+            _, _, R_minus = calculate_R(params_minus)
+ 
+            gradient[i] = (
+                R_plus - R_minus
+            ) / (2 * step)
+ 
+        variance_R = gradient @ cov_matrix @ gradient
+        
+        variance_R = max(variance_R, 0.0)
+ 
+        result['S_B_uncertainty'] = np.sqrt(variance_R)
+ 
+    return result
+
+
+###########################################################################################################
+# calculate_sb_ratio_calculate_sb_ratio_2gauss_pol2
+###########################################################################################################
+def calculate_sb_ratio_2gauss_pol2(
+    fit_params,
+    bin_edges,
+    mass_interval=None,
+    cov_matrix=None
+):
+    """
+    Calculate S/B and its uncertainty for:
+ 
+    f(x) = A1 * exp(-0.5*((x-mu1)/sigma1)**2)
+         + A2 * exp(-0.5*((x-mu2)/sigma2)**2)
+         + A4 * b * x + c * x**2
+ 
+    Parameters
+    ----------
+    fit_params : array
+        [A1, mu1, sigma1, A2, mu2, sigma2, A4, b, c]
+ 
+    bin_edges : array
+        Histogram bin edges.
+ 
+    mass_interval : tuple or None
+        Integration interval.
+ 
+    cov_matrix : 2D array
+        Full covariance matrix from the fit.
+    """
+ 
+    fit_params = np.asarray(fit_params, dtype=float)
+ 
+    if mass_interval is None:
+        x_min = bin_edges[0]
+        x_max = bin_edges[-1]
+    else:
+        x_min, x_max = mass_interval
+ 
+    def gaussian_integral(A, mu, sigma):
+ 
+        z_min = (x_min - mu) / (np.sqrt(2) * sigma)
+        z_max = (x_max - mu) / (np.sqrt(2) * sigma)
+ 
+        return (
+            A
+            * sigma
+            * np.sqrt(np.pi / 2)
+            * (erf(z_max) - erf(z_min))
+        )
+
+
+    def pol2_integral(A, b, c):
+        
+        func = lambda x: A * x + 0.5 * b * x**2 + c * x**3 / 3
+        
+        return func(x_max) - func(x_min)
+ 
+ 
+    def calculate_R(params):
+ 
+        A1, mu1, sigma1, A2, mu2, sigma2, A4, b, c = params
+ 
+        S1 = gaussian_integral(A1, mu1, sigma1)
+        S2 = gaussian_integral(A2, mu2, sigma2)
+ 
+        S = S1 + S2
+ 
+        B = pol2_integral(A4, b, c)
+ 
+        R = S / B
+ 
+        return S, B, R
+ 
+    S, B, R = calculate_R(fit_params)
+ 
+    result = {
+        'signal': S,
+        'background': B,
+        'S_B_ratio': R,
+        'integration_range': (x_min, x_max)
+    }
+ 
+    if cov_matrix is not None:
+ 
+        cov_matrix = np.asarray(cov_matrix, dtype=float)
+ 
+        gradient = np.zeros(len(fit_params))
+ 
+        for i in range(len(fit_params)):
+ 
+            params_plus = fit_params.copy()
+            params_minus = fit_params.copy()
+ 
+            step = 1e-5 * max(abs(fit_params[i]), 1.0)
+ 
+            params_plus[i] += step
+            params_minus[i] -= step
+ 
+            _, _, R_plus = calculate_R(params_plus)
+            _, _, R_minus = calculate_R(params_minus)
+ 
+            gradient[i] = (
+                R_plus - R_minus
+            ) / (2 * step)
+ 
+        variance_R = gradient @ cov_matrix @ gradient
+        
+        variance_R = max(variance_R, 0.0)
+ 
+        result['S_B_uncertainty'] = np.sqrt(variance_R)
+ 
+    return result
