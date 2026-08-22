@@ -36,6 +36,8 @@ class CFG:
     
     seed = 58
     
+    fit_version = 1.5
+    
     #######################################################################################
     # GPU
     gpu_available = torch.cuda.is_available()

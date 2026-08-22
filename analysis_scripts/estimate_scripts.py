@@ -694,6 +694,11 @@ def calculate_sb_ratio_2gauss_const(
         Full covariance matrix from the fit.
     """
  
+    version = 1.4
+        
+    if version != CFG.fit_version:
+        raise 'Versions of fit and s/b calculations might be different!!'
+ 
     fit_params = np.asarray(fit_params, dtype=float)
  
     if mass_interval is None:
@@ -782,14 +787,14 @@ def calculate_sb_ratio_2gauss_pol2(
     """
     Calculate S/B and its uncertainty for:
  
-    f(x) = A1 * exp(-0.5*((x-mu1)/sigma1)**2)
-         + A2 * exp(-0.5*((x-mu2)/sigma2)**2)
-         + A4 * b * x + c * x**2
+    f(x) = (A1 / (sqrt(2π) * sigma1)) * exp(-0.5*((x-mu1)/sigma1)^2)
+         + (A2 / (sqrt(2π) * sigma2)) * exp(-0.5*((x-mu2)/sigma2)^2)
+         + A3 + b * x + c * x^2
  
     Parameters
     ----------
     fit_params : array
-        [A1, mu1, sigma1, A2, mu2, sigma2, A4, b, c]
+        [A1, mu1, sigma1, A2, mu2, sigma2, A3, b, c]
  
     bin_edges : array
         Histogram bin edges.
@@ -801,6 +806,11 @@ def calculate_sb_ratio_2gauss_pol2(
         Full covariance matrix from the fit.
     """
  
+    version = 1.5
+    
+    if version != CFG.fit_version:
+        raise Exception('Versions of fit and s/b calculations might be different!!')
+ 
     fit_params = np.asarray(fit_params, dtype=float)
  
     if mass_interval is None:
@@ -809,37 +819,27 @@ def calculate_sb_ratio_2gauss_pol2(
     else:
         x_min, x_max = mass_interval
  
-    def gaussian_integral(A, mu, sigma):
  
+    def gaussian_integral(A, mu, sigma):
         z_min = (x_min - mu) / (np.sqrt(2) * sigma)
         z_max = (x_max - mu) / (np.sqrt(2) * sigma)
- 
-        return (
-            A
-            * sigma
-            * np.sqrt(np.pi / 2)
-            * (erf(z_max) - erf(z_min))
-        )
+        
+        return A * (erf(z_max) - erf(z_min)) / 2
 
 
     def pol2_integral(A, b, c):
-        
         func = lambda x: A * x + 0.5 * b * x**2 + c * x**3 / 3
-        
         return func(x_max) - func(x_min)
  
  
     def calculate_R(params):
- 
-        A1, mu1, sigma1, A2, mu2, sigma2, A4, b, c = params
+        A1, mu1, sigma1, A2, mu2, sigma2, A3, b, c = params
  
         S1 = gaussian_integral(A1, mu1, sigma1)
         S2 = gaussian_integral(A2, mu2, sigma2)
  
         S = S1 + S2
- 
-        B = pol2_integral(A4, b, c)
- 
+        B = pol2_integral(A3, b, c)
         R = S / B
  
         return S, B, R
@@ -854,13 +854,13 @@ def calculate_sb_ratio_2gauss_pol2(
     }
  
     if cov_matrix is not None:
- 
         cov_matrix = np.asarray(cov_matrix, dtype=float)
  
-        gradient = np.zeros(len(fit_params))
+        gradient_S = np.zeros(len(fit_params))
+        gradient_B = np.zeros(len(fit_params))
+        gradient_R = np.zeros(len(fit_params))
  
         for i in range(len(fit_params)):
- 
             params_plus = fit_params.copy()
             params_minus = fit_params.copy()
  
@@ -869,17 +869,63 @@ def calculate_sb_ratio_2gauss_pol2(
             params_plus[i] += step
             params_minus[i] -= step
  
-            _, _, R_plus = calculate_R(params_plus)
-            _, _, R_minus = calculate_R(params_minus)
+            S_plus, B_plus, R_plus = calculate_R(params_plus)
+            S_minus, B_minus, R_minus = calculate_R(params_minus)
  
-            gradient[i] = (
-                R_plus - R_minus
-            ) / (2 * step)
+            gradient_S[i] = (S_plus - S_minus) / (2 * step)
+            gradient_B[i] = (B_plus - B_minus) / (2 * step)
+            gradient_R[i] = (R_plus - R_minus) / (2 * step)
  
-        variance_R = gradient @ cov_matrix @ gradient
-        
+        variance_S = gradient_S @ cov_matrix @ gradient_S
+        variance_B = gradient_B @ cov_matrix @ gradient_B
+        variance_R = gradient_R @ cov_matrix @ gradient_R
+ 
+        variance_S = max(variance_S, 0.0)
+        variance_B = max(variance_B, 0.0)
         variance_R = max(variance_R, 0.0)
  
+        result['signal_uncertainty'] = np.sqrt(variance_S)
+        result['background_uncertainty'] = np.sqrt(variance_B)
         result['S_B_uncertainty'] = np.sqrt(variance_R)
  
     return result
+
+
+
+###########################################################################################################
+# calculate_tssa_errors
+###########################################################################################################
+def calculate_tssa_errors(
+    N_phi: int,
+    N_phi_pi: int,
+    phi_1: float,
+    phi_2: float,
+):
+    
+    
+    
+    def mean_abs_cos(phi_1, phi_2, n_points=10000):
+
+        if phi_1 == phi_2:
+            return abs(np.cos(phi_1))
+    
+        if phi_1 < phi_2:
+            raise "Wrong boundaries"
+    
+        x = np.linspace(phi_1, phi_2, n_points)
+        y = np.abs(np.cos(x))
+    
+        integral = np.trapz(y, x)
+    
+        return integral / (phi_2 - phi_1)
+    
+    
+    A = 2 * N_phi * N_phi_pi / (N_phi + N_phi_pi)**2
+    mean_abs_cos_val = mean_abs_cos(phi_1, phi_2)
+    sigma_N_phi = np.sqrt(N_phi)
+    sigma_N_phi_pi = np.sqrt(N_phi_pi)
+    B = np.sqrt((sigma_N_phi / N_phi)**2 + (sigma_N_phi_pi / N_phi_pi)**2)
+    
+    sigma_tssa = A * B / mean_abs_cos_val
+    
+    return sigma_tssa

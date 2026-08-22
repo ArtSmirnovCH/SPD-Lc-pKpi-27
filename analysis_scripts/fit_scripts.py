@@ -5,6 +5,20 @@ import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 from typing import Tuple, Union
 
+import sys
+import os
+
+# Path setup
+try:
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+except NameError:
+    current_dir = os.getcwd()
+    
+parent_dir = os.path.join(current_dir, '..', '..')
+sys.path.insert(0, parent_dir)
+
+from analysis_scripts.config import CFG
+
 
 ###########################################################################################################
 # fit_distr_triple_gauss
@@ -18,6 +32,11 @@ def fit_distr_triple_gauss(distr: Union[pd.Series, np.ndarray],
               plot: bool = False,
               bins: int = 40,
               max_iter: int=1000) -> Tuple:
+
+    version = 1.4
+        
+    if version != CFG.fit_version:
+        raise 'Versions of fit and s/b calculations might be different!!'
 
     data = np.asarray(distr)
 
@@ -289,6 +308,11 @@ def fit_distr_double_gauss(distr: Union[pd.Series, np.ndarray],
               max_iter: int = 1000,
               scaler: float = 1e4,
               unit_name: str = '$\mu m$') -> Tuple:
+    
+    version = 1.4
+        
+    if version != CFG.fit_version:
+        raise 'Versions of fit and s/b calculations might be different!!'
 
     data = np.asarray(distr)
 
@@ -742,6 +766,11 @@ def fit_distr_double_gauss_alternative_input(
     scaler: float = 1e4,
     unit_name: str = '$\mu m$') -> Tuple:
     
+    version = 1.4
+        
+    if version != CFG.fit_version:
+        raise 'Versions of fit and s/b calculations might be different!!'
+    
     mask = counts > 0
     bin_centers = bin_centers[mask]
     counts = counts[mask]
@@ -1188,6 +1217,11 @@ def fit_distr_flat_bg(distr: Union[pd.Series, np.ndarray],
               bins: int = 40,
               max_iter: int = 1000) -> Tuple:
 
+    version = 1.4
+        
+    if version != CFG.fit_version:
+        raise 'Versions of fit and s/b calculations might be different!!'
+
     data = np.asarray(distr)
 
     counts, bin_edges = np.histogram(data, bins=bins)
@@ -1524,7 +1558,13 @@ def fit_distr_double_gauss_and_pol2(
     log_y: bool = False,
     max_iter: int = 1000,
     scaler: float = 1e4,
-    unit_name: str = '$\mu m$') -> Tuple:
+    unit_name: str = '$\mu m$'
+) -> Tuple:
+    
+    version = 1.5
+        
+    if version != CFG.fit_version:
+        raise 'Versions of fit and s/b calculations might be different!!'
     
     mask = counts > 0
     bin_centers = bin_centers[mask]
@@ -1532,10 +1572,10 @@ def fit_distr_double_gauss_and_pol2(
     errors = errors[mask]
 
     #=======================================================================================
-    # Fit Model - Double Gaussian with Constant
+    # Fit Model - Double Gaussian and Pol2
     #=======================================================================================
     
-    def double_gaussian_and_pol_2(x, *params):
+    def double_gaussian_and_pol_2(x, params):
         """
         Composite model of 2 Gaussian functions with pol2 background
         
@@ -1548,8 +1588,13 @@ def fit_distr_double_gauss_and_pol2(
         """
         A1, mu1, sigma1, A2, mu2, sigma2, A3, b, c = params
         
-        g1 = A1 * np.exp(-0.5 * ((x - mu1) / sigma1) ** 2)
-        g2 = A2 * np.exp(-0.5 * ((x - mu2) / sigma2) ** 2)
+        # g1 = A1 * np.exp(-0.5 * ((x - mu1) / sigma1) ** 2)
+        # g2 = A2 * np.exp(-0.5 * ((x - mu2) / sigma2) ** 2)
+        # pol2 = A3 + b * x + c * x**2
+        
+        g1 = A1 / (np.sqrt(2*np.pi) * sigma1) * np.exp( -0.5 * ((x - mu1) / sigma1)**2 )
+        g2 = A2 / (np.sqrt(2*np.pi) * sigma2) * np.exp( -0.5 * ((x - mu2) / sigma2)**2 )
+        # z = x - np.mean(bin_centers)
         pol2 = A3 + b * x + c * x**2
         
         return g1 + g2 + pol2
@@ -1570,188 +1615,450 @@ def fit_distr_double_gauss_and_pol2(
     bounds = [
         (0, None), (2.284, 2.287), (1e-6, 0.5 * data_range),  # Gaussian 1
         (0, None), (2.284, 2.287), (1e-6, 0.5 * data_range),  # Gaussian 2
-        (0, None), (None, None), (None, None)   # Pol2
+        (0, None), (None, None), (None, 0)   # Pol2
     ]
     
-    
-    def calculate_effective_sigma_double_gaussian(fit_params, fit_errors=None):
-        """
-        Calculate effective sigma for double Gaussian mixture
-        
-        For a mixture distribution: f(x) = w1*g1(x) + w2*g2(x)
-        where w_i = A_i / (A1 + A2) are the weights
-        
-        The variance of the mixture is:
-        sigma_eff = sqrt(w1 * sigma1**2 + w2*sigma2**2)
-        
-        Optionally propagates errors if fit_errors is provided
-        """
-        A1, mu1, sigma1, A2, mu2, sigma2, A3, b, c = fit_params
-        
-        # Weights
-        total_amplitude = A1 + A2
-        w1 = A1 / total_amplitude
-        w2 = A2 / total_amplitude
-        
-        effective_mean = w1 * mu1 + w2 * mu2
-        effective_variance = w1 * sigma1**2 + w2 * sigma2**2
-        effective_sigma = np.sqrt(effective_variance)
-        
-        # Uncertainties
-        effective_mean_err = None
-        effective_sigma_err = None
-        
-        if fit_errors is not None:
-            A1_err, mu1_err, sigma1_err, A2_err, mu2_err, sigma2_err, A3_err, b_err, c_err = fit_errors
-            
-            # Partial derivatives for effective mean
-            dmean_dA1 = (mu1 - mu2) * A2 / (total_amplitude**2)
-            dmean_dA2 = (mu2 - mu1) * A1 / (total_amplitude**2)
-            dmean_dmu1 = w1
-            dmean_dmu2 = w2
-            
-            effective_mean_err = np.sqrt(
-                (dmean_dA1 * A1_err)**2 + 
-                (dmean_dA2 * A2_err)**2 + 
-                (dmean_dmu1 * mu1_err)**2 + 
-                (dmean_dmu2 * mu2_err)**2
-            )
-            
-            # Partial derivatives for effective sigma^2
-            # f_sigma2 = w1*sigma1^2 + w2*sigma2^2
-            df_sigma2_dA1 = (sigma1**2 - sigma2**2) * A2 / (total_amplitude**2)
-            df_sigma2_dA2 = (sigma2**2 - sigma1**2) * A1 / (total_amplitude**2)
-            df_sigma2_dsigma1 = 2 * w1 * sigma1
-            df_sigma2_dsigma2 = 2 * w2 * sigma2
-            
-            sigma2_err_sq = (
-                (df_sigma2_dA1 * A1_err)**2 + 
-                (df_sigma2_dA2 * A2_err)**2 + 
-                (df_sigma2_dsigma1 * sigma1_err)**2 + 
-                (df_sigma2_dsigma2 * sigma2_err)**2
-            )
-            
-            # Error for effective sigma: d(sqrt(f))/dx = 0.5 * (1/sqrt(f)) * df/dx
-            if effective_variance > 0:
-                effective_sigma_err = 0.5 * np.sqrt(sigma2_err_sq) / np.sqrt(effective_variance)
-        
-        return effective_sigma, effective_mean, effective_sigma_err, effective_mean_err
-    
-    #=======================================================================================
-    # Loss Function and Optimization
-    #=======================================================================================
-    
-    def weighted_loss(params, x, y, errors):
-        """Objective function to minimize (sum of weighted squared residuals)"""
-        predictions = double_gaussian_and_pol_2(x, *params)
+    def chi2_function(params, x, y, errors):
+ 
+        predictions = double_gaussian_and_pol_2(x, params)
+ 
         residuals = y - predictions
-        weights = 1.0 / (errors**2 + 1e-6)
-        return np.sum(weights * residuals**2)
-    
+ 
+        return np.sum((residuals / errors) ** 2)
+        
+        
+    # =========================================================================
     # Fit
+    # =========================================================================
+ 
     result = minimize(
-        fun=weighted_loss,
-        x0=initial_guess, 
-        args=(bin_centers, counts, errors), 
+        fun=chi2_function,
+        x0=initial_guess,
+        args=(bin_centers, counts, errors),
         method=optimize_method,
         bounds=bounds,
-        options={'maxiter': max_iter}
+        options={"maxiter": max_iter}
     )
-
+ 
     if not result.success:
-        print('Fit problems!')
-        # raise ValueError('Fit problems!')
-
+        print("Warning: fit did not fully converge:")
+        print(result.message)
+ 
     fit_params = result.x
-
+ 
+    n_points = len(counts)
     n_params = len(fit_params)
-    n_points = len(errors)
     n_dof = n_points - n_params
-
-    #=======================================================================================
-    # Calculate Parameter Errors
-    #=======================================================================================
-    
-    def calculate_parameter_errors(result, x, y, errors):
+        
+    # =========================================================================
+    # Numerical Hessian
+    # =========================================================================
+ 
+    def numerical_hessian(fun, x0, epsilon=1e-4):
         """
-        Calculate errors for fitted parameters using the covariance matrix
-        
-        The covariance matrix is approximated by the inverse of the Hessian matrix
-        at the minimum, scaled by the reduced chi-squared
+        Numerical Hessian using central finite differences.
         """
+ 
+        x0 = np.asarray(x0, dtype=float)
+ 
+        n = len(x0)
+        hess = np.zeros((n, n))
+ 
+        steps = epsilon * np.maximum(np.abs(x0), 1.0)
+ 
+        f0 = fun(x0)
+ 
+        for i in range(n):
+ 
+            hi = steps[i]
+ 
+            ei = np.zeros(n)
+            ei[i] = hi
+ 
+            # Diagonal second derivative
+            f_plus = fun(x0 + ei)
+            f_minus = fun(x0 - ei)
+ 
+            hess[i, i] = (
+                f_plus - 2.0 * f0 + f_minus
+            ) / hi**2
+ 
+            for j in range(i + 1, n):
+ 
+                hj = steps[j]
+ 
+                ej = np.zeros(n)
+                ej[j] = hj
+ 
+                f_pp = fun(x0 + ei + ej)
+                f_pm = fun(x0 + ei - ej)
+                f_mp = fun(x0 - ei + ej)
+                f_mm = fun(x0 - ei - ej)
+ 
+                value = (
+                    f_pp
+                    - f_pm
+                    - f_mp
+                    + f_mm
+                ) / (4.0 * hi * hj)
+ 
+                hess[i, j] = value
+                hess[j, i] = value
+ 
+        return hess
         
-        # Calculate Hessian matrix using finite differences
-        def hessian_finite_diff(fun, x0, args=(), epsilon=1e-4):
-            """Calculate Hessian matrix using central finite differences"""
-            n = len(x0)
-            hess = np.zeros((n, n))
-            
-            for i in range(n):
-                for j in range(i, n):
-                    # Create basis vectors
-                    ei = np.zeros(n)
-                    ej = np.zeros(n)
-                    ei[i] = 1.0
-                    ej[j] = 1.0
-                    
-                    # Central difference for Hessian
-                    if i == j:
-                        # Diagonal elements
-                        f_plus = fun(x0 + epsilon * ei, *args)
-                        f_minus = fun(x0 - epsilon * ei, *args)
-                        f0 = fun(x0, *args)
-                        hess[i, i] = (f_plus - 2*f0 + f_minus) / (epsilon**2)
-                    else:
-                        # Off-diagonal elements
-                        f_plus_plus = fun(x0 + epsilon * ei + epsilon * ej, *args)
-                        f_plus_minus = fun(x0 + epsilon * ei - epsilon * ej, *args)
-                        f_minus_plus = fun(x0 - epsilon * ei + epsilon * ej, *args)
-                        f_minus_minus = fun(x0 - epsilon * ei - epsilon * ej, *args)
-                        hess[i, j] = (f_plus_plus - f_plus_minus - f_minus_plus + f_minus_minus) / (4 * epsilon**2)
-                        hess[j, i] = hess[i, j]
-            
-            return hess
-        
-        # Calculate Hessian at minimum
-        hess = hessian_finite_diff(
-            lambda p: weighted_loss(p, x, y, errors), 
-            result.x, 
+    # =========================================================================
+    # Covariance matrix and parameter errors
+    # =========================================================================
+ 
+    def calculate_parameter_errors(
+        result,
+        x,
+        y,
+        errors,
+        n_dof
+    ):
+        """
+        Calculate parameter covariance matrix.
+ 
+        Since the Hessian is calculated for chi2:
+ 
+            H = d²(chi2) / dtheta_i dtheta_j
+ 
+        the covariance matrix in the quadratic approximation is:
+ 
+            Cov = 2 * H^{-1}
+ 
+        If the uncertainties are only known up to a common scale,
+        the covariance is additionally scaled by reduced chi2.
+        """
+ 
+        objective = lambda p: chi2_function(
+            p, x, y, errors
+        )
+ 
+        hess = numerical_hessian(
+            objective,
+            result.x,
             epsilon=1e-4
         )
-        
-        # Calculate covariance matrix (inverse of Hessian)
+ 
+        # Symmetrize to reduce numerical noise
+        hess = 0.5 * (hess + hess.T)
+ 
+        chi2 = objective(result.x)
+ 
+        reduced_chi2 = (
+            chi2 / n_dof
+            if n_dof > 0
+            else np.nan
+        )
+ 
         try:
-            cov_matrix = np.linalg.inv(hess)
+ 
+            # Covariance for Hessian of chi2
+            cov_matrix = 2.0 * np.linalg.inv(hess)
+ 
+            # Optional scale correction
+            #
+            # Keep this if errors are estimates and the overall
+            # noise scale may be incorrect.
+            #
+            # If errors are known exact Poisson errors, one may
+            # choose NOT to multiply by reduced_chi2.
             
-            # Calculate chi-squared and reduced chi-squared
-            predictions = double_gaussian_and_pol_2(x, *result.x)
-            residuals = y - predictions
-            weights = 1.0 / (errors**2 + 1e-6)
-            chi2 = np.sum(weights * residuals**2)
-            reduced_chi2 = chi2 / n_dof if n_dof > 0 else chi2
-            
-            # Scale covariance matrix by reduced chi-squared
-            cov_matrix *= reduced_chi2
-            
-            # Parameter errors are sqrt of diagonal elements
-            param_errors = np.sqrt(np.diag(cov_matrix))
-            
-            return param_errors, cov_matrix, chi2, reduced_chi2
-            
+            # Maybe remove
+            if n_dof > 0:
+                cov_matrix *= reduced_chi2
+ 
+            # Symmetrize covariance
+            cov_matrix = 0.5 * (
+                cov_matrix + cov_matrix.T
+            )
+ 
+            variances = np.diag(cov_matrix)
+ 
+            # Negative values can appear from numerical noise
+            param_errors = np.sqrt(
+                np.maximum(variances, 0.0)
+            )
+ 
+            return (
+                param_errors,
+                cov_matrix,
+                chi2,
+                reduced_chi2,
+                hess
+            )
+ 
         except np.linalg.LinAlgError:
-            # If matrix inversion fails, return NaNs
-            print("Warning: Could not calculate covariance matrix (singular Hessian)")
-            n_params = len(result.x)
-            return np.full(n_params, np.nan), np.full((n_params, n_params), np.nan), np.nan, np.nan
-    
-    # Calculate parameter errors
-    param_errors, cov_matrix, chi2, reduced_chi2 = calculate_parameter_errors(
-        result, bin_centers, counts, errors
+ 
+            print(
+                "Warning: Hessian is singular. "
+                "Covariance matrix cannot be calculated."
+            )
+ 
+            n = len(result.x)
+ 
+            return (
+                np.full(n, np.nan),
+                np.full((n, n), np.nan),
+                chi2,
+                reduced_chi2,
+                hess
+            )
+ 
+    param_errors, cov_matrix, chi2, reduced_chi2, hess = calculate_parameter_errors(
+        result=result,
+        x=bin_centers,
+        y=counts,
+        errors=errors,
+        n_dof=n_dof
     )
     
-    # Calculate effective sigma with error propagation
-    effective_sigma, effective_mean, effective_sigma_err, effective_mean_err = calculate_effective_sigma_double_gaussian(
-        fit_params, param_errors
+    # =========================================================================
+    # Effective parameters of the Gaussian mixture
+    # =========================================================================
+ 
+    def calculate_effective_parameters(
+        fit_params,
+        cov_matrix
+    ):
+        """
+        Calculate mean and standard deviation of the full
+        two-Gaussian mixture.
+ 
+        Parameters:
+            [A1, mu1, sigma1, A2, mu2, sigma2, C]
+ 
+        For the mixture weights:
+ 
+            w1 = A1 / (A1 + A2)
+            w2 = A2 / (A1 + A2)
+ 
+        Mean:
+ 
+            mu_eff = w1*mu1 + w2*mu2
+ 
+        Full variance of the mixture:
+ 
+            Var_eff =
+                w1*sigma1²
+                + w2*sigma2²
+                + w1*w2*(mu1 - mu2)²
+ 
+        Equivalently:
+ 
+            Var_eff =
+                w1*(sigma1² + (mu1 - mu_eff)²)
+                + w2*(sigma2² + (mu2 - mu_eff)²)
+ 
+        Errors are propagated using the full covariance matrix:
+ 
+            Var(f) = grad(f)^T Cov grad(f)
+        """
+ 
+        A1, mu1, sigma1, A2, mu2, sigma2, A3, b, c = fit_params
+ 
+        total_amplitude = A1 + A2
+ 
+        if total_amplitude <= 0:
+            return np.nan, np.nan, np.nan, np.nan
+ 
+        # ---------------------------------------------------------------------
+        # Weights
+        # ---------------------------------------------------------------------
+ 
+        w1 = A1 / total_amplitude
+        w2 = A2 / total_amplitude
+ 
+        # ---------------------------------------------------------------------
+        # Effective mean
+        # ---------------------------------------------------------------------
+ 
+        effective_mean = (
+            w1 * mu1
+            + w2 * mu2
+        )
+ 
+        # ---------------------------------------------------------------------
+        # Full effective variance
+        # ---------------------------------------------------------------------
+ 
+        delta_mu = mu1 - mu2
+ 
+        effective_variance = (
+            w1 * sigma1**2
+            + w2 * sigma2**2
+            + w1 * w2 * delta_mu**2
+        )
+ 
+        effective_variance = max(
+            effective_variance,
+            0.0
+        )
+ 
+        effective_sigma = np.sqrt(
+            effective_variance
+        )
+ 
+        # ---------------------------------------------------------------------
+        # Error propagation
+        # ---------------------------------------------------------------------
+ 
+        if (
+            cov_matrix is None
+            or np.any(~np.isfinite(cov_matrix))
+        ):
+            return (
+                effective_sigma,
+                effective_mean,
+                np.nan,
+                np.nan
+            )
+ 
+        # =====================================================================
+        # Gradient of effective mean
+        # =====================================================================
+ 
+        grad_mean = np.zeros(len(fit_params))
+ 
+        grad_mean[0] = (
+            A2 * (mu1 - mu2)
+            / total_amplitude**2
+        )
+ 
+        grad_mean[1] = w1
+ 
+        grad_mean[2] = 0.0
+ 
+        grad_mean[3] = (
+            A1 * (mu2 - mu1)
+            / total_amplitude**2
+        )
+ 
+        grad_mean[4] = w2
+ 
+        grad_mean[5] = 0.0
+ 
+        grad_mean[6] = 0.0
+ 
+        # Full covariance propagation
+        mean_variance = (
+            grad_mean
+            @ cov_matrix
+            @ grad_mean
+        )
+ 
+        effective_mean_err = np.sqrt(
+            max(mean_variance, 0.0)
+        )
+ 
+        # =====================================================================
+        # Gradient of full effective variance
+        #
+        # V =
+        #   w1*sigma1²
+        #   + w2*sigma2²
+        #   + w1*w2*(mu1-mu2)²
+        #
+        # =====================================================================
+ 
+        grad_var = np.zeros(len(fit_params))
+ 
+        # Derivatives with respect to A1 and A2
+ 
+        # dw1/dA1 = A2 / (A1+A2)^2
+        # dw2/dA1 = -A2 / (A1+A2)^2
+ 
+        # dw1/dA2 = -A1 / (A1+A2)^2
+        # dw2/dA2 = A1 / (A1+A2)^2
+ 
+        dV_dw1 = (
+            sigma1**2
+            + w2 * delta_mu**2
+        )
+ 
+        dV_dw2 = (
+            sigma2**2
+            + w1 * delta_mu**2
+        )
+ 
+        grad_var[0] = (
+            A2 / total_amplitude**2
+        ) * (dV_dw1 - dV_dw2)
+ 
+        grad_var[3] = (
+            A1 / total_amplitude**2
+        ) * (dV_dw2 - dV_dw1)
+ 
+        # Derivatives with respect to mu1 and mu2
+ 
+        grad_var[1] = (
+            2.0
+            * w1
+            * w2
+            * delta_mu
+        )
+ 
+        grad_var[4] = (
+            -2.0
+            * w1
+            * w2
+            * delta_mu
+        )
+ 
+        # Derivatives with respect to sigma1 and sigma2
+ 
+        grad_var[2] = (
+            2.0 * w1 * sigma1
+        )
+ 
+        grad_var[5] = (
+            2.0 * w2 * sigma2
+        )
+ 
+        # Constant background does not enter effective moments
+        grad_var[6] = 0.0
+ 
+        # Error of variance
+        variance_variance = (
+            grad_var
+            @ cov_matrix
+            @ grad_var
+        )
+ 
+        variance_err = np.sqrt(
+            max(variance_variance, 0.0)
+        )
+ 
+        # =====================================================================
+        # sigma = sqrt(V)
+        #
+        # d sigma / d V = 1 / (2 sqrt(V))
+        # =====================================================================
+ 
+        if effective_sigma > 0:
+ 
+            effective_sigma_err = (
+                variance_err
+                / (2.0 * effective_sigma)
+            )
+ 
+        else:
+ 
+            effective_sigma_err = np.nan
+ 
+        return (
+            effective_sigma,
+            effective_mean,
+            effective_sigma_err,
+            effective_mean_err
+        )
+        
+    effective_sigma, effective_mean, effective_sigma_err, effective_mean_err = calculate_effective_parameters(
+        fit_params,
+        cov_matrix
     )
 
     print("=" * 60)
@@ -1794,7 +2101,7 @@ def fit_distr_double_gauss_and_pol2(
         if result.success:
             
             # Calculate fit values and pulls
-            fit_values = double_gaussian_and_pol_2(bin_centers, *fit_params)
+            fit_values = double_gaussian_and_pol_2(bin_centers, fit_params)
             residuals = counts - fit_values
             pulls = residuals / errors  # (data - fit) / error
             
@@ -1823,7 +2130,7 @@ def fit_distr_double_gauss_and_pol2(
             
             # Plot the fitted curve
             x_fit = np.linspace(bin_edges[0], bin_edges[-1], 200)
-            y_fit = double_gaussian_and_pol_2(x_fit, *fit_params)
+            y_fit = double_gaussian_and_pol_2(x_fit, fit_params)
             
             axes[0].plot(
                 x_fit,
@@ -1834,9 +2141,10 @@ def fit_distr_double_gauss_and_pol2(
                 label='Double Gaussian Fit'
             )
             
-            # Plot individual Gaussians
-            g1 = fit_params[0] * np.exp(-0.5 * ((x_fit - fit_params[1]) / fit_params[2]) ** 2)
-            g2 = fit_params[3] * np.exp(-0.5 * ((x_fit - fit_params[4]) / fit_params[5]) ** 2)
+            # g1 = fit_params[0] * np.exp(-0.5 * ((x_fit - fit_params[1]) / fit_params[2]) ** 2)
+            # g2 = fit_params[3] * np.exp(-0.5 * ((x_fit - fit_params[4]) / fit_params[5]) ** 2)
+            g1 = fit_params[0] / (np.sqrt(2*np.pi) * fit_params[2]) * np.exp( -0.5 * ((x_fit - fit_params[1]) / fit_params[2])**2 )
+            g2 = fit_params[3] / (np.sqrt(2*np.pi) * fit_params[5]) * np.exp( -0.5 * ((x_fit - fit_params[4]) / fit_params[5])**2 )
             pol2 = fit_params[6] + fit_params[7] * x_fit + fit_params[8] * x_fit**2
 
             g1_label = 'Gaussian 1'
@@ -1981,6 +2289,11 @@ def fit_distr_double_gauss_and_pol2_end_exp(
     max_iter: int = 1000,
     scaler: float = 1e4,
     unit_name: str = '$\mu m$') -> Tuple:
+    
+    version = 1.4
+        
+    if version != CFG.fit_version:
+        raise 'Versions of fit and s/b calculations might be different!!'
     
     mask = counts > 0
     bin_centers = bin_centers[mask]

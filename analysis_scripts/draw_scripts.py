@@ -660,8 +660,8 @@ def tssa_plot(
             
     x_bins = np.linspace(bin_edges[0], bin_edges[-1], 200)
             
-    g1 = fit_params[0] * np.exp(-0.5 * ((x_bins - fit_params[1]) / fit_params[2]) ** 2)
-    g2 = fit_params[3] * np.exp(-0.5 * ((x_bins - fit_params[4]) / fit_params[5]) ** 2)
+    g1 = fit_params[0] / (np.sqrt(2*np.pi) * fit_params[2]) * np.exp( -0.5 * ((x_bins - fit_params[1]) / fit_params[2])**2 )
+    g2 = fit_params[3] / (np.sqrt(2*np.pi) * fit_params[5]) * np.exp( -0.5 * ((x_bins - fit_params[4]) / fit_params[5])**2 )            
     pol2 = fit_params[6] + fit_params[7] * x_bins + fit_params[8] * x_bins**2
 
     g1_label = 'Gaussian 1'
@@ -669,10 +669,21 @@ def tssa_plot(
     pol2_label = 'Pol2'
     total_label = "Fit"
     
-    ax.plot(x_bins, g1, 'g:', label=g1_label, alpha=0.7)
-    ax.plot(x_bins, g2, 'b:', label=g2_label, alpha=0.7)
-    ax.plot(x_bins, pol2, 'm:', label=pol2_label, alpha=0.7)
-    ax.plot(x_bins, g1 + g2 + pol2, 'm:', label=total_label, alpha=0.7)
+    ax.plot(x_bins, g1, 'g:', label=g1_label, alpha=0.7, linewidth=2.5)
+    ax.plot(x_bins, g2, 'b:', label=g2_label, alpha=0.7, linewidth=2.5)
+    ax.plot(x_bins, pol2, 'm:', label=pol2_label, alpha=0.7, linewidth=2.5)
+    ax.plot(x_bins, g1 + g2 + pol2, 'r:', label=total_label, linestyle='-', linewidth=3, alpha=0.7)
+    
+    ax.axvline(x=borders_pos[0], ymin=0., ymax=0.95, color='brown', linestyle='--', linewidth=1.5)
+    ax.axvline(x=borders_pos[1], ymin=0., ymax=0.95, color='brown', linestyle='--', linewidth=1.5)
+    
+    ax.axvline(x=borders_pos[2], ymin=0., ymax=0.95, color='blue', linestyle='--', linewidth=1.5)
+    ax.axvline(x=borders_pos[3], ymin=0., ymax=0.95, color='blue', linestyle='--', linewidth=1.5)
+    
+    ax.axvline(x=borders_pos[4], ymin=0., ymax=0.95, color='brown', linestyle='--', linewidth=1.5)
+    ax.axvline(x=borders_pos[5], ymin=0., ymax=0.95, color='brown', linestyle='--', linewidth=1.5) 
+    
+    ax.legend()
     
     plt.tight_layout()
     return fig, ax
