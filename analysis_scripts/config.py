@@ -34,6 +34,10 @@ class CFG:
     sig_eff_presel = 0.9471810669404919
     bg_eff_presel = 0.6200400630780377
     
+    # ML selection
+    ML_sig_eff = 0.0538
+    ML_bg_eff = 3.44e-5
+    
     seed = 58
     
     fit_version = 1.5

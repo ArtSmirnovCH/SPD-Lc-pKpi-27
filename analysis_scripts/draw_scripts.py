@@ -612,10 +612,10 @@ def total_spectrum(sig_mass_distr: Union[pd.Series, np.ndarray],
     
 
 ###########################################################################################################
-# tssa_plot
+# tssa_area_plot
 ###########################################################################################################
 
-def tssa_plot(
+def tssa_area_plot(
     sig_mass_distr: Union[pd.Series, np.ndarray], 
     bg_mass_distr: Union[pd.Series, np.ndarray], 
     have_sig_events: int,
@@ -688,3 +688,57 @@ def tssa_plot(
     plt.tight_layout()
     return fig, ax
     
+    
+###########################################################################################################
+# tssa_error_plot
+###########################################################################################################
+
+def tssa_error_plot(
+    gaps: Union[np.ndarray, List],
+    tssa_errors_list: Union[np.ndarray, List],
+    x_label: str,
+):
+    
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    max_error = np.max(tssa_errors_list)
+
+    for i, ((start, end), error) in enumerate(zip(gaps, tssa_errors_list)):
+    
+        width = end - start
+        color = 'steelblue'
+        edgecolor = 'black'
+        linewidth = 1.5
+        alpha = 0.7
+        
+        rect = plt.Rectangle(
+            (start, -error),
+            width,
+            2 * error,
+            fill=True,
+            alpha=alpha,
+            edgecolor=edgecolor,
+            linewidth=linewidth,
+            facecolor=color
+        )
+        ax.add_patch(rect)
+        
+        mid_x = start + width/2
+        ax.text(mid_x, 0.1 * max_error, f'+-{error:.6f}', ha='center', va='center', fontsize=10, color='black')
+        
+        ax.text(mid_x, -max(tssa_errors_list)*0.1, f'[{start:.1f}, {end:.1f}]', ha='center', va='top', fontsize=10, color='black')
+    
+    ax.axhline(y=0, color='black', linestyle='-', linewidth=1.5, alpha=0.7)
+
+    ax.set_xlim(gaps[0][0] - 0.02, gaps[-1][1] + 0.02)
+    ylim_max = max(tssa_errors_list) * 1.4
+    ax.set_ylim(-ylim_max, ylim_max)
+
+    ax.set_xlabel(f'{x_label} Interval', fontsize=12)
+    ax.set_ylabel('TSSA Error', fontsize=12)
+    ax.set_title(f'TSSA Error by {x_label} Interval', fontsize=14, fontweight='bold')
+    ax.grid(True, alpha=0.8, linestyle='--')
+
+    plt.tight_layout()
+    
+    return fig, ax

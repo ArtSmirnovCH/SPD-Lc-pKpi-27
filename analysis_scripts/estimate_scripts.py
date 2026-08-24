@@ -891,25 +891,26 @@ def calculate_sb_ratio_2gauss_pol2(
     return result
 
 
-
 ###########################################################################################################
-# calculate_tssa_errors
+# calculate_tssa_errors_local_from_fit
 ###########################################################################################################
-def calculate_tssa_errors(
+def calculate_tssa_errors_local(
     N_phi: int,
     N_phi_pi: int,
     phi_1: float,
     phi_2: float,
 ):
     
-    
+    """
+    Calculates TSSA Uncertainties in local phi angle range.
+    """
     
     def mean_abs_cos(phi_1, phi_2, n_points=10000):
 
         if phi_1 == phi_2:
             return abs(np.cos(phi_1))
     
-        if phi_1 < phi_2:
+        if phi_1 > phi_2:
             raise "Wrong boundaries"
     
         x = np.linspace(phi_1, phi_2, n_points)
@@ -929,3 +930,42 @@ def calculate_tssa_errors(
     sigma_tssa = A * B / mean_abs_cos_val
     
     return sigma_tssa
+
+
+###########################################################################################################
+# calculate_tssa_sig_errors_local
+###########################################################################################################
+def calculate_tssa_sig_errors_local(
+    N_raw_phi: int,
+    N_raw_phi_pi: int,
+    N_bg_peak_phi: int,
+    N_bg_peak_phi_pi: int,
+    N_bg_side_phi: int,
+    N_bg_side_phi_pi: int,
+    phi_1: float,
+    phi_2: float,
+):
+    
+    r = (N_bg_peak_phi + N_bg_peak_phi_pi) / (N_raw_phi + N_raw_phi_pi)
+    
+    sigma_ann_raw = calculate_tssa_errors_local(
+        N_phi=N_raw_phi,
+        N_phi_pi=N_raw_phi_pi,
+        phi_1=phi_1,
+        phi_2=phi_2,
+    )
+    
+    sigma_ann_bg_side = calculate_tssa_errors_local(
+        N_phi=N_bg_side_phi,
+        N_phi_pi=N_bg_side_phi_pi,
+        phi_1=phi_1,
+        phi_2=phi_2,
+    )
+    
+    # print(f'{r=}')
+    # print(f'{sigma_ann_raw=}')
+    # print(f'{sigma_ann_bg_side=}')
+    
+    tssa_error = np.sqrt(sigma_ann_raw**2 + r**2 * sigma_ann_bg_side**2) / (1 - r)
+    
+    return tssa_error
