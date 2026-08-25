@@ -90,6 +90,8 @@ def draw_feature_distribution(
 
     df = df.copy()
 
+    x_label = CFG.official_names[distr_name] if distr_name in CFG.official_names.keys() else distr_name
+
     if tag is not None:
         df = df[df.tag == tag]
 
@@ -103,7 +105,7 @@ def draw_feature_distribution(
         ax=axes[1]
     )
 
-    axes[1].set_xlabel(f'{distr_name}', fontsize=8)
+    axes[1].set_xlabel(x_label, fontsize=8)
     axes[1].set_ylabel('Tag', fontsize=8)
     axes[1].spines['top'].set_visible(False)
     axes[1].spines['right'].set_visible(False)
@@ -126,7 +128,7 @@ def draw_feature_distribution(
     )
 
     # axes[0].set_title(f'{distr_name} Distribution', fontsize=14, fontweight='bold', pad=20)
-    axes[0].set_xlabel(f'{distr_name}', fontsize=8)
+    axes[0].set_xlabel(x_label, fontsize=8)
     y_label = 'Density' if norma else 'Counts'
     axes[0].set_ylabel(y_label, fontsize=8)
     axes[0].spines['top'].set_visible(False)
@@ -159,6 +161,85 @@ def draw_feature_distribution(
         )
     
     return None
+
+
+###########################################################################################################
+# only_hist_plot
+###########################################################################################################
+def only_hist_plot(
+    df: pd.DataFrame,
+    distr_name: str,
+    tag: str = None,
+    hue: str = None,
+    bins: int = 40,
+    norma: bool = False,
+    cut_point: float = None,
+    select_direction: str = None,
+    x_limits: List = None,
+) -> Tuple:
+    
+    """Draw histogram for feature distribution analysis."""
+
+    fig, ax = plt.subplots(figsize=(5, 5))
+
+    df = df.copy()
+
+    x_label = CFG.official_names[distr_name] if distr_name in CFG.official_names.keys() else distr_name
+
+    if tag is not None:
+        df = df[df.tag == tag]
+
+    hist_ax = sns.histplot(
+        data=df,
+        x=distr_name,
+        hue=hue,
+        color=None if hue is not None else '#2E86AB',
+        stat="density" if norma else 'count',
+        common_norm=False,
+        alpha=1,
+        element='step',
+        fill=False,
+        linewidth=2,
+        bins=bins,
+        ax=ax
+    )
+
+    ax.set_xlabel(x_label, fontsize=12)
+    y_label = 'Density' if norma else 'Counts'
+    ax.set_ylabel(y_label, fontsize=8)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.grid(True, alpha=0.8, linestyle='--')
+    ax.tick_params(axis='both', labelsize=8)
+    
+    if x_limits is not None:
+        ax.set_xlim(x_limits[0], x_limits[1])
+
+    # Threshold Line & arrow
+    if cut_point is not None and select_direction is not None:
+
+        y_min, y_max = ax.get_ylim()
+        ax.axvline(cut_point, color='black', linestyle='dashed', 
+                       linewidth=1.5, ymin=0, ymax=0.95)
+    
+        arrow_y_pos = y_max * 0.9    
+        data = df[distr_name].dropna()
+        counts, bin_edges = np.histogram(data, bins=bins)
+        bin_width = bin_edges[1] - bin_edges[0]
+
+        if select_direction == 'right':
+            arrow_direction = cut_point + bin_width * 3
+        else:
+            arrow_direction = cut_point - bin_width * 3
+            
+        ax.annotate(
+            '', 
+            xy=(cut_point, arrow_y_pos), 
+            xytext=(arrow_direction, arrow_y_pos),
+            arrowprops=dict(arrowstyle='<-', color='black', lw=2)
+        )
+    
+    return fig, ax
 
 
 ###########################################################################################################
@@ -738,6 +819,81 @@ def tssa_error_plot(
     ax.set_ylabel('TSSA Error', fontsize=12)
     ax.set_title(f'TSSA Error by {x_label} Interval', fontsize=14, fontweight='bold')
     ax.grid(True, alpha=0.8, linestyle='--')
+
+    plt.tight_layout()
+    
+    return fig, ax
+
+
+###########################################################################################################
+# selection_eff_gap_plot
+###########################################################################################################
+
+def selection_eff_gap_plot(
+    gaps: Union[np.ndarray, List],
+    sig_eff_list: Union[np.ndarray, List],
+    bg_eff_list: Union[np.ndarray, List],
+    x_label: str,
+):
+    
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    max_eff = np.max(np.concatenate((sig_eff_list, bg_eff_list), axis=0))
+    min_eff = np.min(np.concatenate((sig_eff_list, bg_eff_list), axis=0))
+
+    for i, ((start, end), sig_eff, bg_eff) in enumerate(zip(gaps, sig_eff_list, bg_eff_list)):
+    
+        width = end - start
+        
+        rect_sig = plt.Rectangle(
+            (start, 0),
+            width,
+            sig_eff,
+            fill=True,
+            alpha=0.7,
+            edgecolor='black',
+            linewidth=1.5,
+            facecolor='steelblue',
+            label='Signal Efficiency' if i == 0 else ""
+        )
+        ax.add_patch(rect_sig)
+        
+        rect_bg = plt.Rectangle(
+            (start, 0),
+            width,
+            bg_eff,
+            fill=True,
+            alpha=0.7,
+            edgecolor='black',
+            linewidth=1.5,
+            facecolor='coral',
+            label='Background Efficiency' if i == 0 else ""
+        )
+        ax.add_patch(rect_bg)
+        
+        mid_x = start + width / 2
+
+        ax.text(mid_x, sig_eff / 2, f'{sig_eff:.2e}', 
+                ha='center', va='center', fontsize=9, color='white', fontweight='bold')
+        ax.text(mid_x, bg_eff / 2, f'{bg_eff:.2e}', 
+                ha='center', va='center', fontsize=9, color='white', fontweight='bold')
+        
+        ax.text(mid_x, 1e-3 * min_eff, f'[{start:.1f}, {end:.1f}]', 
+                ha='center', va='top', fontsize=10, color='black')
+    
+
+    ax.set_xlim(gaps[0][0] - 0.02, gaps[-1][1] + 0.02)
+    ylim_max = max_eff * 1e2
+    ax.set_ylim(1e-8, ylim_max)
+
+    ax.set_xlabel(f'{x_label} Interval', fontsize=12)
+    ax.set_ylabel('Efficiency', fontsize=12)
+    ax.set_title(f'Selection Efficiency by {x_label} Interval', fontsize=14, fontweight='bold')
+    ax.grid(True, alpha=0.8, linestyle='--')
+    
+    ax.set_yscale('log')
+    
+    ax.legend(loc='upper right', framealpha=0.9)
 
     plt.tight_layout()
     

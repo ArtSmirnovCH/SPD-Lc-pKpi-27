@@ -231,6 +231,18 @@ class CFG:
         'chi2_Lc',
     ]
     
+    official_names = {
+        'sum_abs_pt': r'$\sum_{p,K,\pi} |p^{\mathrm{T}}|$',
+        'l_over_dl_XY': r'$L^{xy}/\Delta \, {L^{xy}}$',
+        'Pt_Lc': r'$P^\mathrm{T}_{\Lambda_c}$',
+        'p_Lc_dca_significance': r'$\text{DCA}_\mathrm{p}^\text{SV}/{\Delta \, \text{DCA}_\mathrm{p}^\text{SV}}$',
+        'dist_p_K_xy_custom': r'$\text{DCA}_{\mathrm{p}K}^\text{xy}$',
+        'delta_eta_pip': r'$\Delta \eta_\pi$',
+        'OA_pip': r'$\Theta_\pi$',
+        'delta_eta_p': r'$\Delta \eta_\mathrm{p}$',
+        'rapidity_K': r'$y_K$',
+    }
+    
     feature_set_1 = [
         
         'probab_p', 'probab_k', 'probab_pip',

@@ -581,7 +581,40 @@ def check_thresholds(
     ax.legend()
     plt.tight_layout()
     
+
+###########################################################################################################
+# get_distribution
+###########################################################################################################
+def get_distribution(
+        distr: Union[pd.Series, np.ndarray], 
+        unit_per_bin: float = None,
+        interval: Tuple[float, float] = None,
+        n_bins: int = None,
+    ):
     
+    """
+    """
+    data = np.asarray(distr)
+    
+    if n_bins is not None:
+        bins=n_bins
+    elif unit_per_bin is not None and interval is not None:
+        bins = ceil(interval[1] - interval[0]) / unit_per_bin
+    else:
+        raise ValueError('n_bins or (unit_per_bin and interval) must be not None!')
+    
+    counts, bin_edges = np.histogram(data, bins=bins)
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    errors = np.sqrt(counts)
+    
+    mask = counts > 0
+    bin_centers = bin_centers[mask]
+    counts = counts[mask]
+    errors = errors[mask]
+    
+    return counts, bin_centers, bin_edges, errors
+
+
 ###########################################################################################################
 # get_mass_distributions
 ###########################################################################################################
