@@ -635,10 +635,10 @@ def fit_distr_flat_bg(distr: Union[pd.Series, np.ndarray],
 
 
 ###########################################################################################################
-# fit_distr_double_gauss_and_pol2
+# fit_distr_double_gauss_and_pol1
 ###########################################################################################################
 
-def fit_distr_double_gauss_and_pol2(
+def fit_distr_double_gauss_and_pol1(
     bin_centers,
     bin_edges,
     counts,
@@ -654,7 +654,7 @@ def fit_distr_double_gauss_and_pol2(
     unit_name: str = '$\mu m$'
 ) -> Tuple:
     
-    version = 1.5
+    version = 1.6
         
     if version != CFG.fit_version:
         raise 'Versions of fit and s/b calculations might be different!!'
@@ -665,59 +665,62 @@ def fit_distr_double_gauss_and_pol2(
     errors = errors[mask]
 
     #=======================================================================================
-    # Fit Model - Double Gaussian and Pol2
+    # Fit Model - Double Gaussian and Pol1
     #=======================================================================================
     
-    def double_gaussian_and_pol_2(x, params):
-        """
-        Composite model of 2 Gaussian functions with pol2 background
-        
-        Args:
-            x: array-like, input values
-            params: 7 parameters [A1, mu1, sigma1, A2, mu2, sigma2, A3, b, c]
-        
-        Returns:
-            y: sum of 2 Gaussian functions and pol2
-        """
-        A1, mu1, sigma1, A2, mu2, sigma2, A3, b, c = params
-        
-        # g1 = A1 * np.exp(-0.5 * ((x - mu1) / sigma1) ** 2)
-        # g2 = A2 * np.exp(-0.5 * ((x - mu2) / sigma2) ** 2)
-        # pol2 = A3 + b * x + c * x**2
-        
-        g1 = A1 / (np.sqrt(2*np.pi) * sigma1) * np.exp( -0.5 * ((x - mu1) / sigma1)**2 )
-        g2 = A2 / (np.sqrt(2*np.pi) * sigma2) * np.exp( -0.5 * ((x - mu2) / sigma2)**2 )
-        # z = x - np.mean(bin_centers)
-        pol2 = A3 + b * x + c * x**2
-        
-        return g1 + g2 + pol2
-    
     initial_amplitude = np.max(counts) * (bin_edges[1] - bin_edges[0])
-    
+        
     data_min = np.min(bin_centers)
     data_max = np.max(bin_centers)
     data_range = data_max - data_min
     
+    peak_index = np.argmax(counts)
+    peak_position = bin_centers[peak_index]
+    peak_height = np.max(counts)
+    
+    def double_gaussian_and_pol_1(x, params):
+        """
+        Composite model of 2 Gaussian functions with pol1 background
+        
+        Args:
+            x: array-like, input values
+            params: 8 parameters [A1, mu1, sigma1, A2, mu2, sigma2, A3, b]
+        
+        Returns:
+            y: sum of 2 Gaussian functions and pol1
+        """
+        A1, mu1, sigma1, A2, mu2, sigma2, A3, b = params
+        
+        g1 = A1 / (np.sqrt(2*np.pi) * sigma1) * np.exp( -0.5 * ((x - mu1) / sigma1)**2 )
+        g2 = A2 / (np.sqrt(2*np.pi) * sigma2) * np.exp( -0.5 * ((x - mu2) / sigma2)**2 )
+        pol1 = A3 + b * x
+        
+        return g1 + g2 + pol1
+    
+    
     initial_guess = [
-        initial_amplitude, data_min + 0.25 * data_range, 0.1 * data_range,  # Gaussian 1
-        initial_amplitude, data_min + 0.75 * data_range, 0.1 * data_range,  # Gaussian 2  
-        initial_amplitude, 1, -2,   # Pol2
+        # for TSSA
+        initial_amplitude, 2.285, 0.1 * data_range,  # Gaussian 1
+        initial_amplitude, 2.286, 0.1 * data_range,  # Gaussian 2  
+        # for total fit
+        # initial_amplitude, 2.285, 0.05,  # Gaussian 1
+        # initial_amplitude, 2.286, 0.01,  # Gaussian 2 
+        initial_amplitude, 1e5#   # Pol1
     ]
     
-    # Set bounds for parameters
     bounds = [
         (0, None), (2.284, 2.287), (1e-6, 0.5 * data_range),  # Gaussian 1
         (0, None), (2.284, 2.287), (1e-6, 0.5 * data_range),  # Gaussian 2
-        (0, None), (None, None), (None, 0)   # Pol2
+        (0, None), (None, None)   # Pol1
     ]
     
     def chi2_function(params, x, y, errors):
  
-        predictions = double_gaussian_and_pol_2(x, params)
+        predictions = double_gaussian_and_pol_1(x, params)
  
         residuals = y - predictions
  
-        return np.sum((residuals / errors) ** 2)
+        return np.sum((residuals / errors)**2)
         
         
     # =========================================================================
@@ -951,7 +954,7 @@ def fit_distr_double_gauss_and_pol2(
             Var(f) = grad(f)^T Cov grad(f)
         """
  
-        A1, mu1, sigma1, A2, mu2, sigma2, A3, b, c = fit_params
+        A1, mu1, sigma1, A2, mu2, sigma2, A3, b = fit_params
  
         total_amplitude = A1 + A2
  
@@ -1103,9 +1106,6 @@ def fit_distr_double_gauss_and_pol2(
             2.0 * w2 * sigma2
         )
  
-        # Constant background does not enter effective moments
-        grad_var[6] = 0.0
- 
         # Error of variance
         variance_variance = (
             grad_var
@@ -1144,7 +1144,8 @@ def fit_distr_double_gauss_and_pol2(
     print("Optimization result:")
     print(f"Success: {result.success}")
     print(f"Message: {result.message}")
-    print(f"Number of iterations: {result.nit}")
+    if 'nit' in result.keys():
+        print(f"Number of iterations: {result.nit}")
     print(f"Final objective value: {result.fun:.6f}")
     print(f"Chi-squared: {chi2:.2f}")
     print(f"Reduced chi-squared: {reduced_chi2:.3f}")
@@ -1156,9 +1157,8 @@ def fit_distr_double_gauss_and_pol2(
     print(f"Gauss 2: A = {fit_params[3]:.4f} +- {param_errors[3]:.4f}")
     print(f"         mu = {fit_params[4]:.6f} +- {param_errors[4]:.6f}")
     print(f"         sigma = {fit_params[5]:.6f} +- {param_errors[5]:.6f}")
-    print(f"Pol2: A = {fit_params[6]:.4f} +- {param_errors[6]:.4f}")
+    print(f"Pol1: A = {fit_params[6]:.4f} +- {param_errors[6]:.4f}")
     print(f"      b = {fit_params[7]:.6f} +- {param_errors[7]:.6f}")
-    print(f"      c = {fit_params[8]:.6f} +- {param_errors[8]:.6f}")
     print("-" * 60)
     print("Derived quantities:")
     if effective_mean_err is not None:
@@ -1179,7 +1179,7 @@ def fit_distr_double_gauss_and_pol2(
         
         if result.success:
             
-            fit_values = double_gaussian_and_pol_2(bin_centers, fit_params)
+            fit_values = double_gaussian_and_pol_1(bin_centers, fit_params)
             residuals = counts - fit_values
             pulls = residuals / errors
 
@@ -1199,7 +1199,7 @@ def fit_distr_double_gauss_and_pol2(
             )
             
             x_fit = np.linspace(bin_edges[0], bin_edges[-1], 200)
-            y_fit = double_gaussian_and_pol_2(x_fit, fit_params)
+            y_fit = double_gaussian_and_pol_1(x_fit, fit_params)
             
             axes[0].plot(
                 x_fit,
@@ -1209,18 +1209,18 @@ def fit_distr_double_gauss_and_pol2(
                 linewidth=2, 
                 label='Double Gaussian Fit'
             )
-            
+
             g1 = fit_params[0] / (np.sqrt(2*np.pi) * fit_params[2]) * np.exp( -0.5 * ((x_fit - fit_params[1]) / fit_params[2])**2 )
             g2 = fit_params[3] / (np.sqrt(2*np.pi) * fit_params[5]) * np.exp( -0.5 * ((x_fit - fit_params[4]) / fit_params[5])**2 )
-            pol2 = fit_params[6] + fit_params[7] * x_fit + fit_params[8] * x_fit**2
-
+            pol1 = fit_params[6] + fit_params[7] * x_fit
+    
             g1_label = 'Gaussian 1'
             g2_label = 'Gaussian 2'
-            pol2_label = 'Pol2'
+            pol2_label = 'Pol1'
             
             axes[0].plot(x_fit, g1, 'g:', label=g1_label, alpha=0.7)
             axes[0].plot(x_fit, g2, 'b:', label=g2_label, alpha=0.7)
-            axes[0].plot(x_fit, pol2, 'm:', label=pol2_label, alpha=0.7)
+            axes[0].plot(x_fit, pol1, 'm:', label=pol2_label, alpha=0.7)
             
             def x_scaler(x, pos):
                 return f'{x * scaler:.{scaler_round}f}'
@@ -1357,7 +1357,7 @@ def fit_distr_double_gauss_and_const(
     errors = errors[mask]
 
     #=======================================================================================
-    # Fit Model - Double Gaussian and Pol2
+    # Fit Model - Double Gaussian and Const
     #=======================================================================================
     
     def double_gaussian_and_const(x, params):
@@ -1372,10 +1372,6 @@ def fit_distr_double_gauss_and_const(
             y: sum of 2 Gaussian functions and const
         """
         A1, mu1, sigma1, A2, mu2, sigma2, C = params
-        
-        # g1 = A1 * np.exp(-0.5 * ((x - mu1) / sigma1) ** 2)
-        # g2 = A2 * np.exp(-0.5 * ((x - mu2) / sigma2) ** 2)
-        # C
         
         g1 = A1 / (np.sqrt(2*np.pi) * sigma1) * np.exp( -0.5 * ((x - mu1) / sigma1)**2 )
         g2 = A2 / (np.sqrt(2*np.pi) * sigma2) * np.exp( -0.5 * ((x - mu2) / sigma2)**2 )
@@ -1394,7 +1390,6 @@ def fit_distr_double_gauss_and_const(
         initial_amplitude   # const
     ]
     
-    # Set bounds for parameters
     bounds = [
         (0, None), (data_min, data_max), (1e-6, 0.5 * data_range),  # Gaussian 1
         (0, None), (data_min, data_max), (1e-6, 0.5 * data_range),  # Gaussian 2

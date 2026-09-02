@@ -8,6 +8,7 @@ from typing import Tuple, Union
 import sys
 import os
 from math import ceil
+from scipy.stats import beta
 
 
 # Path setup
@@ -809,9 +810,9 @@ def calculate_sb_ratio_2gauss_const(
 
 
 ###########################################################################################################
-# calculate_sb_ratio_calculate_sb_ratio_2gauss_pol2
+# calculate_sb_ratio_calculate_sb_ratio_2gauss_pol1
 ###########################################################################################################
-def calculate_sb_ratio_2gauss_pol2(
+def calculate_sb_ratio_2gauss_pol1(
     fit_params,
     bin_edges,
     mass_interval=None,
@@ -822,12 +823,12 @@ def calculate_sb_ratio_2gauss_pol2(
  
     f(x) = (A1 / (sqrt(2π) * sigma1)) * exp(-0.5*((x-mu1)/sigma1)^2)
          + (A2 / (sqrt(2π) * sigma2)) * exp(-0.5*((x-mu2)/sigma2)^2)
-         + A3 + b * x + c * x^2
+         + A3 + b * x
  
     Parameters
     ----------
     fit_params : array
-        [A1, mu1, sigma1, A2, mu2, sigma2, A3, b, c]
+        [A1, mu1, sigma1, A2, mu2, sigma2, A3, b]
  
     bin_edges : array
         Histogram bin edges.
@@ -839,7 +840,7 @@ def calculate_sb_ratio_2gauss_pol2(
         Full covariance matrix from the fit.
     """
  
-    version = 1.5
+    version = 1.6
     
     if version != CFG.fit_version:
         raise Exception('Versions of fit and s/b calculations might be different!!')
@@ -860,19 +861,19 @@ def calculate_sb_ratio_2gauss_pol2(
         return A * (erf(z_max) - erf(z_min)) / 2
 
 
-    def pol2_integral(A, b, c):
-        func = lambda x: A * x + 0.5 * b * x**2 + c * x**3 / 3
+    def pol1_integral(A, b):
+        func = lambda x: A * x + 0.5 * b * x**2
         return func(x_max) - func(x_min)
  
  
     def calculate_R(params):
-        A1, mu1, sigma1, A2, mu2, sigma2, A3, b, c = params
+        A1, mu1, sigma1, A2, mu2, sigma2, A3, b = params
  
         S1 = gaussian_integral(A1, mu1, sigma1)
         S2 = gaussian_integral(A2, mu2, sigma2)
  
         S = S1 + S2
-        B = pol2_integral(A3, b, c)
+        B = pol1_integral(A3, b)
         R = S / B
  
         return S, B, R
@@ -1002,3 +1003,45 @@ def calculate_tssa_sig_errors_local(
     tssa_error = np.sqrt(sigma_ann_raw**2 + r**2 * sigma_ann_bg_side**2) / (1 - r)
     
     return tssa_error
+
+
+###########################################################################################################
+# calculate_tssa_sig_errors_local
+###########################################################################################################
+def epsilon_up(N_before, N_after, CL=0.95):
+    """
+    Односторонний верхний доверительный предел для эффективности отбора.
+ 
+    Parameters
+    ----------
+    N_before : int
+        Число событий до отбора.
+    N_after : int
+        Число событий после отбора.
+    CL : float, optional
+        Confidence level. По умолчанию 0.95.
+ 
+    Returns
+    -------
+    float
+        Upper limit for efficiency.
+    """
+ 
+    if N_before <= 0:
+        raise ValueError("N_before must be > 0")
+ 
+    if N_after < 0 or N_after > N_before:
+        raise ValueError(
+            "Must be 0 <= N_after <= N_before"
+        )
+ 
+    if N_after == 0:
+        eps_up = 1.0 - (1.0 - CL)**(1.0 / N_before)
+    else:
+        eps_up = beta.ppf(
+            CL,
+            N_after + 1,
+            N_before - N_after
+        )
+ 
+    return eps_up

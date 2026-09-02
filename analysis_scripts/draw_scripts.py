@@ -176,11 +176,14 @@ def only_hist_plot(
     cut_point: float = None,
     select_direction: str = None,
     x_limits: List = None,
+    fig = None,
+    ax = None,
 ) -> Tuple:
     
     """Draw histogram for feature distribution analysis."""
 
-    fig, ax = plt.subplots(figsize=(5, 5))
+    if (ax is None) or (fig is None):
+        fig, ax = plt.subplots(figsize=(5, 5))
 
     df = df.copy()
 
@@ -204,7 +207,8 @@ def only_hist_plot(
         ax=ax
     )
 
-    ax.set_xlabel(x_label, fontsize=12)
+    ax.set_title('Feature Distribution')
+    ax.set_xlabel(x_label, fontsize=10)
     y_label = 'Density' if norma else 'Counts'
     ax.set_ylabel(y_label, fontsize=8)
     ax.spines['top'].set_visible(False)
@@ -713,7 +717,7 @@ def tssa_area_plot(
     line_style: str = '--'):
     
     """
-    params: 7 parameters [A1, mu1, sigma1, A2, mu2, sigma2, A3, b, c]
+    params: 8 parameters [A1, mu1, sigma1, A2, mu2, sigma2, A3, b]
     borders_pos: 6 params [left_left_bg, left_right_bg, left_sif, right_sig, right_left_bg, right_right_bg]
     """
     
@@ -743,17 +747,17 @@ def tssa_area_plot(
             
     g1 = fit_params[0] / (np.sqrt(2*np.pi) * fit_params[2]) * np.exp( -0.5 * ((x_bins - fit_params[1]) / fit_params[2])**2 )
     g2 = fit_params[3] / (np.sqrt(2*np.pi) * fit_params[5]) * np.exp( -0.5 * ((x_bins - fit_params[4]) / fit_params[5])**2 )            
-    pol2 = fit_params[6] + fit_params[7] * x_bins + fit_params[8] * x_bins**2
+    pol1 = fit_params[6] + fit_params[7] * x_bins
 
     g1_label = 'Gaussian 1'
     g2_label = 'Gaussian 2'
-    pol2_label = 'Pol2'
+    pol2_label = 'Pol1'
     total_label = "Fit"
     
     ax.plot(x_bins, g1, 'g:', label=g1_label, alpha=0.7, linewidth=2.5)
     ax.plot(x_bins, g2, 'b:', label=g2_label, alpha=0.7, linewidth=2.5)
-    ax.plot(x_bins, pol2, 'm:', label=pol2_label, alpha=0.7, linewidth=2.5)
-    ax.plot(x_bins, g1 + g2 + pol2, 'r:', label=total_label, linestyle='-', linewidth=3, alpha=0.7)
+    ax.plot(x_bins, pol1, 'm:', label=pol2_label, alpha=0.7, linewidth=2.5)
+    ax.plot(x_bins, g1 + g2 + pol1, 'r:', label=total_label, linestyle='-', linewidth=3, alpha=0.7)
     
     ax.axvline(x=borders_pos[0], ymin=0., ymax=0.95, color='brown', linestyle='--', linewidth=1.5)
     ax.axvline(x=borders_pos[1], ymin=0., ymax=0.95, color='brown', linestyle='--', linewidth=1.5)
