@@ -699,12 +699,15 @@ def fit_distr_double_gauss_and_pol1(
     
     
     initial_guess = [
-        # for TSSA
+        # for TSSA, total cut-based 1, total cut-based 3
         initial_amplitude, 2.285, 0.1 * data_range,  # Gaussian 1
         initial_amplitude, 2.286, 0.1 * data_range,  # Gaussian 2  
-        # for total fit
+        # total cut-based 4
         # initial_amplitude, 2.285, 0.05,  # Gaussian 1
         # initial_amplitude, 2.286, 0.01,  # Gaussian 2 
+        # ML
+        # initial_amplitude, 2.285, 0.05,  # Gaussian 1
+        # initial_amplitude, 2.286, 0.05,  # Gaussian 2 
         initial_amplitude, 1e5#   # Pol1
     ]
     
@@ -1228,20 +1231,20 @@ def fit_distr_double_gauss_and_pol1(
             axes[0].xaxis.set_major_formatter(FuncFormatter(x_scaler))
             axes[1].xaxis.set_major_formatter(FuncFormatter(x_scaler))
             
-            fit_text = ''
+            # fit_text = ''
 
-            if effective_sigma_err is not None and not np.isnan(effective_sigma_err):
-                fit_text += f'Effective $\sigma$: ({effective_sigma * scaler:.4f} $\pm$ {effective_sigma_err * scaler:.4f}) $\mu$m'
-            else:
-                fit_text += f'Effective $\sigma$: {effective_sigma * scaler:.4f} $\mu$m'
+            # if effective_sigma_err is not None and not np.isnan(effective_sigma_err):
+            #     fit_text += f'Effective $\sigma$: ({effective_sigma * scaler:.4f} $\pm$ {effective_sigma_err * scaler:.4f}) $\mu$m'
+            # else:
+            #     fit_text += f'Effective $\sigma$: {effective_sigma * scaler:.4f} $\mu$m'
 
-            if effective_mean_err is not None and not np.isnan(effective_mean_err):
-                fit_text += f'\nEffective $\mu$: ({effective_mean * scaler:.4f} $\pm$ {effective_mean_err * scaler:.4f}) $\mu$m'
-            else:
-                fit_text += f'\nEffective $\mu$: {effective_mean * scaler:.4f} $\mu$m'
+            # if effective_mean_err is not None and not np.isnan(effective_mean_err):
+            #     fit_text += f'\nEffective $\mu$: ({effective_mean * scaler:.4f} $\pm$ {effective_mean_err * scaler:.4f}) $\mu$m'
+            # else:
+            #     fit_text += f'\nEffective $\mu$: {effective_mean * scaler:.4f} $\mu$m'
 
-            axes[0].text(0.02, 0.7, fit_text, transform=axes[0].transAxes,
-                        verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8), fontsize=10)
+            # axes[0].text(0.02, 0.7, fit_text, transform=axes[0].transAxes,
+            #             verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8), fontsize=10)
             
             axes[0].set_title(f'{title}', fontsize=14, fontweight='bold', pad=20)
             axes[0].set_ylabel('Counts')
@@ -1277,8 +1280,8 @@ def fit_distr_double_gauss_and_pol1(
                 f'\n$\sigma_{{pull}}$ = {std_pull:.3f}'
             )
             
-            axes[1].text(0.02, 0.98, pull_stats, transform=axes[1].transAxes,
-                   verticalalignment='top', bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.8), fontsize=9)
+            # axes[1].text(0.02, 0.98, pull_stats, transform=axes[1].transAxes,
+            #        verticalalignment='top', bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.8), fontsize=9)
             
             axes[1].set_ylabel(r'$(data - fit) / \sqrt{data}$')
             axes[1].legend(loc='upper right')
@@ -1346,7 +1349,7 @@ def fit_distr_double_gauss_and_const(
     unit_name: str = '$\mu m$'
 ) -> Tuple:
     
-    version = 1.5
+    version = 1.6
         
     if version != CFG.fit_version:
         raise 'Versions of fit and s/b calculations might be different!!'
@@ -1360,39 +1363,51 @@ def fit_distr_double_gauss_and_const(
     # Fit Model - Double Gaussian and Const
     #=======================================================================================
     
+    initial_amplitude = np.max(counts) * (bin_edges[1] - bin_edges[0])
+        
+    data_min = np.min(bin_centers)
+    data_max = np.max(bin_centers)
+    data_range = data_max - data_min
+    
+    peak_index = np.argmax(counts)
+    peak_position = bin_centers[peak_index]
+    peak_height = np.max(counts)
+    
     def double_gaussian_and_const(x, params):
         """
         Composite model of 2 Gaussian functions with const background
         
         Args:
             x: array-like, input values
-            params: 7 parameters [A1, mu1, sigma1, A2, mu2, sigma2, C]
+            params: 8 parameters [A1, mu1, sigma1, A2, mu2, sigma2, A3]
         
         Returns:
             y: sum of 2 Gaussian functions and const
         """
-        A1, mu1, sigma1, A2, mu2, sigma2, C = params
+        A1, mu1, sigma1, A2, mu2, sigma2, A3 = params
         
         g1 = A1 / (np.sqrt(2*np.pi) * sigma1) * np.exp( -0.5 * ((x - mu1) / sigma1)**2 )
         g2 = A2 / (np.sqrt(2*np.pi) * sigma2) * np.exp( -0.5 * ((x - mu2) / sigma2)**2 )
         
-        return g1 + g2 + C
+        return g1 + g2 + A3
     
-    initial_amplitude = np.max(counts) * (bin_edges[1] - bin_edges[0])
-    
-    data_min = np.min(bin_centers)
-    data_max = np.max(bin_centers)
-    data_range = data_max - data_min
     
     initial_guess = [
-        initial_amplitude, data_min + 0.25 * data_range, 0.1 * data_range,  # Gaussian 1
-        initial_amplitude, data_min + 0.75 * data_range, 0.1 * data_range,  # Gaussian 2  
-        initial_amplitude   # const
+        # for TSSA, total cut-based 1, total cut-based 3
+        initial_amplitude, (data_min + data_max) / 2, 0.1 * data_range,  # Gaussian 1
+        initial_amplitude, (data_min + data_max) / 2, 0.1 * data_range,  # Gaussian 2  
+        # total cut-based 4
+        # initial_amplitude, 2.285, 0.05,  # Gaussian 1
+        # initial_amplitude, 2.286, 0.01,  # Gaussian 2 
+        # ML
+        # initial_amplitude, 2.285, 0.05,  # Gaussian 1
+        # initial_amplitude, 2.286, 0.05,  # Gaussian 2 
+        initial_amplitude#   # Pol1
     ]
     
     bounds = [
-        (0, None), (data_min, data_max), (1e-6, 0.5 * data_range),  # Gaussian 1
-        (0, None), (data_min, data_max), (1e-6, 0.5 * data_range),  # Gaussian 2
+        (0, None), (None, None), (1e-6, 0.5 * data_range),  # Gaussian 1
+        (0, None), (None, None), (1e-6, 0.5 * data_range),  # Gaussian 2
         (0, None)   # Const
     ]
     
@@ -1402,7 +1417,7 @@ def fit_distr_double_gauss_and_const(
  
         residuals = y - predictions
  
-        return np.sum((residuals / errors) ** 2)
+        return np.sum((residuals / errors)**2)
         
         
     # =========================================================================
@@ -1636,7 +1651,7 @@ def fit_distr_double_gauss_and_const(
             Var(f) = grad(f)^T Cov grad(f)
         """
  
-        A1, mu1, sigma1, A2, mu2, sigma2, C = fit_params
+        A1, mu1, sigma1, A2, mu2, sigma2, A3 = fit_params
  
         total_amplitude = A1 + A2
  
@@ -1744,14 +1759,6 @@ def fit_distr_double_gauss_and_const(
  
         grad_var = np.zeros(len(fit_params))
  
-        # Derivatives with respect to A1 and A2
- 
-        # dw1/dA1 = A2 / (A1+A2)^2
-        # dw2/dA1 = -A2 / (A1+A2)^2
- 
-        # dw1/dA2 = -A1 / (A1+A2)^2
-        # dw2/dA2 = A1 / (A1+A2)^2
- 
         dV_dw1 = (
             sigma1**2
             + w2 * delta_mu**2
@@ -1796,9 +1803,6 @@ def fit_distr_double_gauss_and_const(
             2.0 * w2 * sigma2
         )
  
-        # Constant background does not enter effective moments
-        grad_var[6] = 0.0
- 
         # Error of variance
         variance_variance = (
             grad_var
@@ -1809,12 +1813,6 @@ def fit_distr_double_gauss_and_const(
         variance_err = np.sqrt(
             max(variance_variance, 0.0)
         )
- 
-        # =====================================================================
-        # sigma = sqrt(V)
-        #
-        # d sigma / d V = 1 / (2 sqrt(V))
-        # =====================================================================
  
         if effective_sigma > 0:
  
@@ -1843,7 +1841,8 @@ def fit_distr_double_gauss_and_const(
     print("Optimization result:")
     print(f"Success: {result.success}")
     print(f"Message: {result.message}")
-    print(f"Number of iterations: {result.nit}")
+    if 'nit' in result.keys():
+        print(f"Number of iterations: {result.nit}")
     print(f"Final objective value: {result.fun:.6f}")
     print(f"Chi-squared: {chi2:.2f}")
     print(f"Reduced chi-squared: {reduced_chi2:.3f}")
@@ -1855,7 +1854,7 @@ def fit_distr_double_gauss_and_const(
     print(f"Gauss 2: A = {fit_params[3]:.4f} +- {param_errors[3]:.4f}")
     print(f"         mu = {fit_params[4]:.6f} +- {param_errors[4]:.6f}")
     print(f"         sigma = {fit_params[5]:.6f} +- {param_errors[5]:.6f}")
-    print(f"Const: C = {fit_params[6]:.4f} +- {param_errors[6]:.4f}")
+    print(f"Pol1: A = {fit_params[6]:.4f} +- {param_errors[6]:.4f}")
     print("-" * 60)
     print("Derived quantities:")
     if effective_mean_err is not None:
@@ -1879,7 +1878,7 @@ def fit_distr_double_gauss_and_const(
             fit_values = double_gaussian_and_const(bin_centers, fit_params)
             residuals = counts - fit_values
             pulls = residuals / errors
-            
+
             axes[0].errorbar(
                 x=bin_centers,
                 y=counts,
@@ -1906,39 +1905,39 @@ def fit_distr_double_gauss_and_const(
                 linewidth=2, 
                 label='Double Gaussian Fit'
             )
-            
+
             g1 = fit_params[0] / (np.sqrt(2*np.pi) * fit_params[2]) * np.exp( -0.5 * ((x_fit - fit_params[1]) / fit_params[2])**2 )
             g2 = fit_params[3] / (np.sqrt(2*np.pi) * fit_params[5]) * np.exp( -0.5 * ((x_fit - fit_params[4]) / fit_params[5])**2 )
-            const = fit_params[6] * np.ones(shape=g1.size)
-
+            const = fit_params[6]
+    
             g1_label = 'Gaussian 1'
             g2_label = 'Gaussian 2'
-            const_label = 'Constant'
+            const_label = 'Const'
             
             axes[0].plot(x_fit, g1, 'g:', label=g1_label, alpha=0.7)
             axes[0].plot(x_fit, g2, 'b:', label=g2_label, alpha=0.7)
-            axes[0].plot(x_fit, const, 'm:', label=const_label, alpha=0.7)
+            axes[0].plot(x_fit, const * np.ones(200), 'm:', label=const_label, alpha=0.7)
             
             def x_scaler(x, pos):
                 return f'{x * scaler:.{scaler_round}f}'
-
+            
             axes[0].xaxis.set_major_formatter(FuncFormatter(x_scaler))
             axes[1].xaxis.set_major_formatter(FuncFormatter(x_scaler))
             
-            fit_text = ''
+            # fit_text = ''
 
-            if effective_sigma_err is not None and not np.isnan(effective_sigma_err):
-                fit_text += f'Effective $\sigma$: ({effective_sigma * scaler:.4f} $\pm$ {effective_sigma_err * scaler:.4f}) $\mu$m'
-            else:
-                fit_text += f'Effective $\sigma$: {effective_sigma * scaler:.4f} $\mu$m'
+            # if effective_sigma_err is not None and not np.isnan(effective_sigma_err):
+            #     fit_text += f'Effective $\sigma$: ({effective_sigma * scaler:.4f} $\pm$ {effective_sigma_err * scaler:.4f}) $\mu$m'
+            # else:
+            #     fit_text += f'Effective $\sigma$: {effective_sigma * scaler:.4f} $\mu$m'
 
-            if effective_mean_err is not None and not np.isnan(effective_mean_err):
-                fit_text += f'\nEffective $\mu$: ({effective_mean * scaler:.4f} $\pm$ {effective_mean_err * scaler:.4f}) $\mu$m'
-            else:
-                fit_text += f'\nEffective $\mu$: {effective_mean * scaler:.4f} $\mu$m'
+            # if effective_mean_err is not None and not np.isnan(effective_mean_err):
+            #     fit_text += f'\nEffective $\mu$: ({effective_mean * scaler:.4f} $\pm$ {effective_mean_err * scaler:.4f}) $\mu$m'
+            # else:
+            #     fit_text += f'\nEffective $\mu$: {effective_mean * scaler:.4f} $\mu$m'
 
-            axes[0].text(0.02, 0.7, fit_text, transform=axes[0].transAxes,
-                        verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8), fontsize=10)
+            # axes[0].text(0.02, 0.7, fit_text, transform=axes[0].transAxes,
+            #             verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8), fontsize=10)
             
             axes[0].set_title(f'{title}', fontsize=14, fontweight='bold', pad=20)
             axes[0].set_ylabel('Counts')
@@ -1972,10 +1971,10 @@ def fit_distr_double_gauss_and_const(
                 f'Pull Statistics:'
                 f'\n$\mu_{{pull}}$ = {mean_pull:.3f}'
                 f'\n$\sigma_{{pull}}$ = {std_pull:.3f}'
-                )
+            )
             
-            axes[1].text(0.02, 0.98, pull_stats, transform=axes[1].transAxes,
-                   verticalalignment='top', bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.8), fontsize=9)
+            # axes[1].text(0.02, 0.98, pull_stats, transform=axes[1].transAxes,
+            #        verticalalignment='top', bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.8), fontsize=9)
             
             axes[1].set_ylabel(r'$(data - fit) / \sqrt{data}$')
             axes[1].legend(loc='upper right')
@@ -1992,7 +1991,6 @@ def fit_distr_double_gauss_and_const(
         
         plt.tight_layout()
         
-
         fit_results = {
             'params': fit_params,
             'errors': param_errors,

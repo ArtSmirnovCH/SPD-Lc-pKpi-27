@@ -266,8 +266,8 @@ def find_optimal_cut_point(
     if select_direction not in ['left', 'right']:
         raise ValueError("selection_direction must be 'left' or 'right'")
     
-    if metric_type not in ['tpr_fpr', 'f1', 's_over_b', 's_over_b_mod']:
-        raise ValueError(f"Invalid metric_type: {metric_type}. \n Should be 'tpr_fpr', 'f1', 's_over_b' or 's_over_b_mod'.")
+    if metric_type not in ['tpr_fpr', 'f1', 's_over_b', 's_over_b_mod', 's_over_sqrt_b']:
+        raise ValueError(f"Invalid metric_type: {metric_type}. \n Should be 'tpr_fpr', 'f1', 's_over_b', 's_over_b_mod' or 's_over_sqrt_b'.")
     
     if feature not in df.columns:
         raise ValueError(f"Feature '{feature}' not found in DataFrame columns")
@@ -340,7 +340,7 @@ def find_optimal_cut_point(
             pre = tp / (tp + fp + eps)
             metric_val = 2 * pre * rec / (pre + rec + eps)
             
-        elif metric_type == 's_over_b_mod' or metric_type == 's_over_b':
+        elif metric_type == 's_over_b_mod' or metric_type == 's_over_b' or metric_type == 's_over_sqrt_b':
             
             if select_direction == 'right':
                 sig_mass_distr = df.loc[(df.tag == 'Sig') & (df[feature] > cut_x), 'mass_Lc']
@@ -360,9 +360,10 @@ def find_optimal_cut_point(
                 bg_weight = CFG.real_bg_events / CFG.have_bg_events_2
                 if metric_type == 's_over_b':
                     metric_val = sig_weight / bg_weight * len(sig_mass_distr) / len(bg_mass_distr)
-                else:
+                elif metric_type == 's_over_b_mod':
                     metric_val = sig_weight / bg_weight * len(sig_mass_distr) / len(bg_mass_distr) * sig_eff * (1 - bg_eff)
-                
+                elif metric_type == 's_over_sqrt_b':
+                    metric_val = sig_weight / bg_weight**0.5 * len(sig_mass_distr) / len(bg_mass_distr)**0.5
          
         metric.append(metric_val)
         tpr.append(tpr_val)
@@ -405,11 +406,11 @@ def calculate_feature_importance(
     nbins: int = 100,
 ) -> pd.DataFrame:
     
-    if metric_type_cut_point not in ['tpr_fpr', 'f1', 's_over_b', 's_over_b_mod']:
-        raise ValueError(f"Invalid metric_type_cut_point: {metric_type_cut_point}. \n Must be one of: 'tpr_fpr', 'f1', 's_over_b', 's_over_b_mod'")
+    if metric_type_cut_point not in ['tpr_fpr', 'f1', 's_over_b', 's_over_b_mod', 's_over_sqrt_b']:
+        raise ValueError(f"Invalid metric_type_cut_point: {metric_type_cut_point}. \n Must be one of: 'tpr_fpr', 'f1', 's_over_b', 's_over_b_mod', 's_over_sqrt_b'")
     
-    if metric_type_feature_ranking not in ['AUC', 's_over_b', 's_over_b_mod']:
-            raise ValueError(f"Invalid metric_type_feature_ranking: {metric_type_feature_ranking}. \n Must be one of: 'AUC', 's_over_b', 's_over_b_mod'")
+    if metric_type_feature_ranking not in ['AUC', 's_over_b', 's_over_b_mod', 's_over_sqrt_b']:
+            raise ValueError(f"Invalid metric_type_feature_ranking: {metric_type_feature_ranking}. \n Must be one of: 'AUC', 's_over_b', 's_over_b_mod', 's_over_sqrt_b'")
     
     required_columns = ['mass_Lc', 'tag'] + features
     missing_columns = [col for col in required_columns if col not in df.columns]
@@ -471,7 +472,7 @@ def calculate_feature_importance(
             
             if metric_type_feature_ranking == 'AUC':
                 metric_value = auc(fpr, tpr) # Ignors min_sig_sel_mask; This is another metric used for feature importance ranking
-            elif metric_type_feature_ranking == 's_over_b_mod' or metric_type_feature_ranking == 's_over_b':
+            elif metric_type_feature_ranking == 's_over_b_mod' or metric_type_feature_ranking == 's_over_b' or metric_type_feature_ranking == 's_over_sqrt_b':
                 metric_value = metric[min_sig_sel_mask][best_arg]    # Get metric from cut criteria
             
             print(f'{metric_value=:.4f}, direction: {direction}')
@@ -518,8 +519,8 @@ def calculate_feature_importance(
 
 def create_best_selection_path(
     df: pd.DataFrame, 
-    features: List[str], 
-    metric_type_cut_point: str, 
+    features: List[str],
+    metric_type_cut_point: str,
     metric_type_feature_ranking: str, # [tpr-fpr, AUC], [s_over_b, s_over_b]
     have_sig_events: int,
     have_bg_events: int, 
@@ -532,13 +533,13 @@ def create_best_selection_path(
     df = df.copy()
     features_to_use = features.copy()
     
-    if metric_type_cut_point not in ['tpr_fpr', 'f1', 's_over_b', 's_over_b_mod']:
+    if metric_type_cut_point not in ['tpr_fpr', 'f1', 's_over_b', 's_over_b_mod', 's_over_sqrt_b']:
         raise ValueError(
-            f"Invalid metric_type_cut_point: {metric_type_cut_point}. \n Must be one of: 'tpr_fpr', 'f1', 's_over_b', 's_over_b_mod'")
-        
-    if metric_type_feature_ranking not in ['AUC', 's_over_b', 's_over_b_mod']:
+            f"Invalid metric_type_cut_point: {metric_type_cut_point}. \n Must be one of: 'tpr_fpr', 'f1', 's_over_b', 's_over_b_mod', 's_over_sqrt_b'")
+    
+    if metric_type_feature_ranking not in ['AUC', 's_over_b', 's_over_b_mod', 's_over_sqrt_b']:
             raise ValueError(
-                f"Invalid metric_type_feature_ranking: {metric_type_feature_ranking}. \n Must be one of: 'AUC', 's_over_b','s_over_b_mod'")
+                f"Invalid metric_type_feature_ranking: {metric_type_feature_ranking}. \n Must be one of: 'AUC', 's_over_b','s_over_b_mod', 's_over_sqrt_b'")
     
     required_columns = ['tag', 'mass_Lc'] + features
     missing_columns = [col for col in required_columns if col not in df.columns]
