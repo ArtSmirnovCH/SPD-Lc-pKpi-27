@@ -207,7 +207,7 @@ def only_hist_plot(
         ax=ax
     )
 
-    ax.set_title('Feature Distribution')
+    # ax.set_title('Feature Distribution')
     ax.set_xlabel(x_label, fontsize=10)
     y_label = 'Density' if norma else 'Counts'
     ax.set_ylabel(y_label, fontsize=8)
